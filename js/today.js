@@ -154,8 +154,8 @@ export function renderToday(root) {
 
     <div class="quick">
       <button data-act="go-workout">
-        <span class="q-title"><span class="q-ico green">${icons.dumbbell}</span>${state.draft ? 'Reprendre la séance' : 'Séance'}</span>
-        <span class="q-sub">${state.draft ? 'En cours' : last ? `Faite ${relDay(new Date(last.date))}` : 'Pas encore faite'}</span>
+        <span class="q-title"><span class="q-ico green">${icons.dumbbell}</span>${'Séance'}</span>
+        <span class="q-sub">${state.draft ? 'En cours, touche pour reprendre' : last ? `Faite ${relDay(new Date(last.date))}` : 'Pas encore faite'}</span>
       </button>
       <button data-act="go-abs">
         <span class="q-title"><span class="q-ico red">${icons.timer}</span>Circuit abdos</span>

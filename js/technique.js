@@ -538,13 +538,20 @@ const BACK = {
     const f = { s: 0.8, x: 24, y: 6 };
     const T = (q) => [f.x + f.s * q[0], f.y + f.s * q[1]];
     const J = pullBackJ(t);
-    const grips = place([98, 26], 0, `<rect x="-5.4" y="-4.6" width="10.8" height="10" rx="4.4" fill="${SKIN}"/>${strokes('M-3.4-4V4.6M0-4.4V4.8M3.4-4V4.6', SKIN_LN, 0.6, 0.6)}`)
-      + place([142, 26], 0, `<rect x="-5.4" y="-4.6" width="10.8" height="10" rx="4.4" fill="${SKIN}"/>${strokes('M-3.4-4V4.6M0-4.4V4.8M3.4-4V4.6', SKIN_LN, 0.6, 0.6)}`);
+    // Supination vue de dos : paumes tournées vers la caméra, pouces vers l'extérieur
+    const palm = `<rect x="-5.6" y="-8.4" width="11.2" height="7.4" rx="3.2" fill="${SKIN}"/>`
+      + strokes('M-2.8-8V-2.4M0-8.4V-2.2M2.8-8V-2.4', SKIN_LN, 0.55, 0.55)
+      + `<rect x="-5.4" y="-2.4" width="10.8" height="9.6" rx="4.2" fill="${SKIN}"/>`
+      + `<ellipse cx="-.6" cy="2.6" rx="3.4" ry="3" fill="#F8DCC6"/>`
+      + strokes('M-4 0.4Q-1 1.6 2.4-.2M-3.4 3.6Q-.4 4.6 2.6 3', SKIN_LN, 0.5, 0.55)
+      + `<path d="M4.4 3.6C6.4 2.6 8.2 .2 8.6-2.4C8.8-3.6 7.6-4 7-3C6.2-1.2 5-.2 3.8.4Z" fill="${SKIN}" stroke="${SKIN_LN}" stroke-width=".4"/>`;
+    const grips = place([98, 26], 0, palm, -1) + place([142, 26], 0, palm, 1);
     const scene = `${pullBar(40, 200, 24)}${drawFront(J, { hand: 'fist' }, 'back')}${grips}`;
     const bp = [120 + J.bladeX + 3, J.sc[1] + J.blade];
     return `${floor(182)}<g transform="translate(${f.x} ${f.y}) scale(${f.s})">${scene}</g>
       ${pin(T(bp), add(T(bp), [44, 30]), 'Omoplates vers le bas', 'start')}
-      ${t >= 0.35 ? pin(T(J.elbL), add(T(J.elbL), [-26, 26]), 'Coudes vers les côtes', 'end') : ''}`;
+      ${t >= 0.35 ? pin(T(J.elbL), add(T(J.elbL), [-26, 26]), 'Coudes vers les côtes', 'end') : ''}
+      ${t < 0.35 ? pin(T([142, 26]), add(T([142, 26]), [34, 16]), 'Paumes vers toi', 'start') : ''}`;
   },
   dc(t) {
     // Vue depuis la tête du banc : la barre, les avant-bras et la largeur de prise
@@ -798,11 +805,12 @@ const LIB = {
     tips: [
       'Yeux sous la barre, omoplates serrées et basses, fesses sur le banc, pieds bien à plat.',
       'Prise un peu plus large que les épaules, poignets droits au-dessus des coudes.',
+      'Barre calée dans le bas de la paume, sur l\'axe de l\'avant-bras, pas dans les doigts : le poignet reste droit, il ne se casse pas vers l\'arrière. Serre fort la barre.',
       'Descends vers le bas des pectoraux, coudes à environ 45° du buste, pas à 90°.',
       'Touche la poitrine sans rebondir, puis pousse vers le haut et légèrement vers tes épaules.',
       'Sans pareur : mets les barres de sécurité et arrête-toi une répétition avant l\'échec.',
     ],
-    mistakes: ['Coudes écartés à 90° (mauvais pour les épaules).', 'Fesses qui décollent du banc.', 'Faire rebondir la barre sur la poitrine.'],
+    mistakes: ['Poignets cassés vers l\'arrière, barre dans les doigts (douleur aux poignets).', 'Coudes écartés à 90° (mauvais pour les épaules).', 'Fesses qui décollent du banc.', 'Faire rebondir la barre sur la poitrine.'],
   },
   fentes: {
     name: 'Fentes bulgares',
