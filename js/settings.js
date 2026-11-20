@@ -38,7 +38,7 @@ export function openSettings() {
         <button class="btn ghost" data-import>${icons.upload}Importer</button>
       </div>
       <input type="file" id="imp" accept="application/json,.json" hidden>
-      <p class="hint" style="text-align:center;margin-top:26px">Fonte, version 1.2</p>`,
+      <p class="hint" style="text-align:center;margin-top:26px">Fonte, version 1.3</p>`,
     onMount(s) {
       const $ = (q) => s.body.querySelector(q);
       const box = $('#ex-list');

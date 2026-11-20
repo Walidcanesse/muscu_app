@@ -39,14 +39,14 @@ export function lineChart(values, { color = 'var(--green)', w = 320, h = 150, la
     const y = pad.t + k * (h - pad.t - pad.b);
     return `<line x1="0" x2="${w}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 4"/>`;
   }).join('');
-  const lab = (i, anchor) => labels[i] ? `<text x="${pts[i][0]}" y="${h - 4}" fill="var(--chalk-3)" font-size="11" text-anchor="${anchor}" font-family="-apple-system, system-ui">${labels[i]}</text>` : '';
+  const lab = (i, anchor) => labels[i] ? `<text x="${pts[i][0]}" y="${h - 4}" fill="var(--chalk-3)" font-size="11" text-anchor="${anchor}">${labels[i]}</text>` : '';
   return `
   <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">
     <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${color}" stop-opacity="0.28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
+      <stop offset="0" stop-color="${color}" stop-opacity="0.16"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
     </linearGradient></defs>
     ${grid}
-    <text x="0" y="${pad.t - 6}" fill="var(--chalk-3)" font-size="11" text-anchor="start" font-family="-apple-system, system-ui">max ${fmt(max, decimals)}</text>
+    <text x="0" y="${pad.t - 6}" fill="var(--chalk-3)" font-size="11" text-anchor="start">max ${fmt(max, decimals)}</text>
     ${area ? `<path d="${area}" fill="url(#${gid})"/>` : ''}
     ${n > 1 ? `<path class="path" d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" style="--len:${len}" vector-effect="non-scaling-stroke"/>` : ''}
     ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === n - 1 ? 4.5 : 2.5}" fill="${i === n - 1 ? color : '#000'}" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}

@@ -4,10 +4,15 @@ import { sparkline } from './charts.js';
 import { openSettings } from './settings.js';
 import { absTotalSec } from './abs.js';
 
-/** Carte « carburant » : calories et macros du jour (réutilisée dans Nutrition). */
+/** Carte « carburant » : anneau des calories et macros du jour (réutilisée dans Nutrition). */
+const RING_R = 52, RING_W = 10, RING_C = 2 * Math.PI * RING_R;
+// Dernières valeurs affichées, par jour : l'anneau part de là au lieu de repartir de zéro
+const shown = {};
+
 export function fuelCard(k) {
   const t = dayTotals(k);
   const g = state.goals;
+  const was = shown[k] || {};
   const left = Math.round(g.kcal - t.kcal);
   const segs = [
     ['var(--red)', t.p * 4],
@@ -15,41 +20,71 @@ export function fuelCard(k) {
     ['var(--yellow)', t.f * 9],
   ];
   const eaten = segs.reduce((a, [, v]) => a + v, 0);
-  const total = Math.max(g.kcal, eaten);
+  const total = Math.max(g.kcal, eaten, 1);
+  // Chaque macro est un arc de l'anneau, séparé des autres par un petit jour
+  const gap = 4;
+  let acc = 0;
+  const arcs = segs.map(([c, v], i) => {
+    const len = (v / total) * RING_C;
+    const from = acc;
+    acc += len;
+    if (len < 0.5) return '';
+    const vis = Math.max(0.01, len - RING_W - gap);
+    const off = (-(from + RING_W / 2 + gap / 2)).toFixed(2);
+    return `<circle class="arc" cx="60" cy="60" r="${RING_R}" stroke="${c}" stroke-width="${RING_W}"
+      stroke-dasharray="${was['a' + i] || `0 ${RING_C.toFixed(2)}`}" data-key="a${i}" data-dash="${vis.toFixed(2)} ${RING_C.toFixed(2)}"
+      data-off="${off}" style="stroke-dashoffset:${was['o' + i] ?? off};transition-delay:${was['a' + i] ? 0 : i * 120}ms"/>`;
+  }).join('');
+  const counter = (key, val) => `data-key="${key}" data-count="${val}" data-v="${was[key] ?? 0}">${fmt(was[key] ?? 0)}`;
   const macro = (key, name, color, val, goal) => `
     <div class="macro">
-      <div class="m-name"><i style="background:${color};color:${color}"></i>${name}</div>
-      <div class="m-val"><span data-count="${val.toFixed(0)}">0</span><small> / ${fmt(goal)} g</small></div>
-      <div class="bar"><i data-w="${Math.min(100, (val / goal) * 100).toFixed(1)}" style="background:${color};color:${color}"></i></div>
+      <div class="m-top"><span class="m-name">${name}</span><span class="m-val"><b ${counter(key, Math.round(val))}</b> / ${fmt(goal)} g</span></div>
+      <div class="bar"><i data-key="w${key}" data-w="${Math.min(100, (val / goal) * 100).toFixed(1)}" style="background:${color};width:${was['w' + key] ?? 0}%"></i></div>
     </div>`;
   return `
-  <section class="fuel">
-    <div class="fuel-top">
-      <span class="fuel-big" data-count="${Math.round(t.kcal)}">0</span>
-      <span class="fuel-of">/ ${fmt(g.kcal)} kcal</span>
+  <section class="fuel" data-fuel-day="${k}">
+    <div class="fuel-main">
+      <div class="ring" role="img" aria-label="${fmt(Math.round(t.kcal))} kcal sur ${fmt(g.kcal)}">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-track" cx="60" cy="60" r="${RING_R}" stroke-width="${RING_W}"/>
+          ${arcs}
+        </svg>
+        <div class="ring-label"><span class="fuel-big num" ${counter('kcal', Math.round(t.kcal))}</span><span class="fuel-of">sur ${fmt(g.kcal)}</span></div>
+      </div>
+      <div class="macros">
+        ${macro('p', 'Protéines', 'var(--red)', t.p, g.p)}
+        ${macro('c', 'Glucides', 'var(--blue)', t.c, g.c)}
+        ${macro('f', 'Lipides', 'var(--yellow)', t.f, g.f)}
+      </div>
     </div>
     <div class="fuel-left ${left < 0 ? 'over' : ''}">${left >= 0
       ? `Il te reste <b>${fmt(left)} kcal</b>`
       : `<b>${fmt(-left)} kcal</b> au-dessus de ton objectif`}</div>
-    <div class="stack" aria-hidden="true">
-      ${segs.map(([c, v]) => `<span data-grow="${(v / total).toFixed(4)}" style="background:${c};color:${c};flex-grow:0"></span>`).join('')}
-      <span class="rest" data-grow="${Math.max(0, (total - eaten) / total).toFixed(4)}" style="flex-grow:1"></span>
-    </div>
-    <div class="macros">
-      ${macro('p', 'Protéines', 'var(--red)', t.p, g.p)}
-      ${macro('c', 'Glucides', 'var(--blue)', t.c, g.c)}
-      ${macro('f', 'Lipides', 'var(--yellow)', t.f, g.f)}
-    </div>
   </section>`;
 }
 
-/** Lance les animations (compteurs, barres) après insertion. */
+/** Lance les animations (compteurs, anneau, barres) après insertion. */
 export function animateFuel(root) {
-  root.querySelectorAll('[data-count]').forEach((el) => countUp(el, Number(el.dataset.count)));
-  requestAnimationFrame(() => {
-    root.querySelectorAll('[data-grow]').forEach((el) => { el.style.flexGrow = el.dataset.grow; });
-    root.querySelectorAll('[data-w]').forEach((el) => { el.style.width = el.dataset.w + '%'; });
+  const card = root.querySelector('.fuel');
+  if (!card) return;
+  const mem = (shown[card.dataset.fuelDay] ||= {});
+  card.querySelectorAll('[data-count]').forEach((el) => {
+    const v = Number(el.dataset.count);
+    mem[el.dataset.key] = v;
+    countUp(el, v);
   });
+  card.querySelectorAll('[data-dash]').forEach((el) => {
+    mem[el.dataset.key] = el.dataset.dash;
+    mem['o' + el.dataset.key.slice(1)] = el.dataset.off;
+  });
+  card.querySelectorAll('[data-w]').forEach((el) => { mem[el.dataset.key] = el.dataset.w; });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    card.querySelectorAll('[data-dash]').forEach((el) => {
+      el.style.strokeDasharray = el.dataset.dash;
+      el.style.strokeDashoffset = el.dataset.off;
+    });
+    card.querySelectorAll('[data-w]').forEach((el) => { el.style.width = el.dataset.w + '%'; });
+  }));
 }
 
 function weightBlock() {
@@ -104,12 +139,12 @@ export function renderToday(root) {
 
     <div class="quick">
       <button data-act="go-workout">
-        <span class="q-ico" style="background:rgba(43,245,160,.12);color:var(--green)">${icons.dumbbell}</span>
+        <span class="q-ico green">${icons.dumbbell}</span>
         <span><span class="q-title">${state.draft ? 'Reprendre la séance' : 'Séance'}</span>
         <span class="q-sub" style="display:block">${state.draft ? 'En cours' : last ? `Dernière : ${relDay(new Date(last.date))}` : 'Pas encore commencée'}</span></span>
       </button>
       <button data-act="go-abs">
-        <span class="q-ico" style="background:rgba(255,55,95,.12);color:var(--red)">${icons.timer}</span>
+        <span class="q-ico red">${icons.timer}</span>
         <span><span class="q-title">Circuit abdos</span>
         <span class="q-sub" style="display:block">${lastAbs ? `Fait ${relDay(new Date(lastAbs))}` : durLabel(absTotalSec(a))}</span></span>
       </button>

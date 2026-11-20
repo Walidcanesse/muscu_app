@@ -34,7 +34,7 @@ export function renderAbs(root) {
 
     <div class="group"><ol class="circuit">${steps.join('')}</ol></div>
 
-    <button class="btn block red" data-act="start" style="margin-top:16px" ${n ? '' : 'disabled'}>${icons.play}Lancer le circuit</button>
+    <button class="btn block" data-act="start" style="margin-top:16px" ${n ? '' : 'disabled'}>${icons.play}Lancer le circuit</button>
 
     <h2 class="section">Réglages</h2>
     <div class="group">
@@ -194,12 +194,13 @@ function startTimer() {
 
   const phases = buildPhases(a);
   const totalWork = phases.filter((p) => p.kind === 'work').length;
-  const R = 46, C = 2 * Math.PI * R;
+  // Cadran de 60 graduations : celles qui restent allumées = temps restant
+  const R = 44, C = 2 * Math.PI * R, TICKS = 60, TICK = 0.8, TICK_W = 7;
 
   const el = document.createElement('div');
   el.className = 'timer prep';
   el.innerHTML = `
-    <div class="t-bg" aria-hidden="true"><i class="gp"></i><i class="gw"></i><i class="gr"></i><i class="gd"></i></div>
+    <div class="t-bg" aria-hidden="true"><i class="gw"></i><i class="gr"></i><i class="gd"></i></div>
     <div class="t-top">
       <span class="t-round"></span>
       <button class="t-close" data-t="close" aria-label="Arrêter">${icons.close}</button>
@@ -209,8 +210,11 @@ function startTimer() {
       <div class="t-kind"></div>
       <div class="t-name"></div>
       <div class="t-ring">
-        <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="${R}" fill="none" stroke-width="4"/>
-        <circle class="prog" cx="50" cy="50" r="${R}" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="0"/></svg>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs><mask id="t-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><circle class="prog" cx="50" cy="50" r="${R}" fill="none" stroke="#fff" stroke-width="12" stroke-dasharray="${C}" stroke-dashoffset="0"/></mask></defs>
+          <circle class="ticks" cx="50" cy="50" r="${R}" fill="none" stroke-width="${TICK_W}" stroke-dasharray="${TICK} ${(C / TICKS - TICK).toFixed(3)}"/>
+          <circle class="ticks lit" cx="50" cy="50" r="${R}" fill="none" stroke-width="${TICK_W}" stroke-dasharray="${TICK} ${(C / TICKS - TICK).toFixed(3)}" mask="url(#t-mask)"/>
+        </svg>
         <div class="t-count"></div>
       </div>
       <div class="t-next"></div>
