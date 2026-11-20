@@ -17,6 +17,21 @@ let enterTimer = 0;
 
 hydrateIcons(document);
 
+// iOS 26 : l'appli installée n'occupe parfois pas tout l'écran (bande vide en bas).
+// On mesure la bande pour ne pas compter deux fois la zone de la barre de geste.
+function measureGap() {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const vvOpen = window.visualViewport && window.visualViewport.height < window.innerHeight - 80; // clavier ouvert
+  if (!standalone || vvOpen) return;
+  const portrait = window.innerHeight > window.innerWidth;
+  const full = portrait ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
+  const gap = Math.max(0, Math.min(60, Math.round(full - window.innerHeight)));
+  document.documentElement.style.setProperty('--ios-gap', `${gap}px`);
+}
+measureGap();
+window.addEventListener('resize', measureGap);
+window.addEventListener('orientationchange', () => setTimeout(measureGap, 300));
+
 function show(name, { animate = true } = {}) {
   const changed = name !== current;
   current = name;

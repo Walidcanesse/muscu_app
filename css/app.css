@@ -53,13 +53,16 @@
   --r-in: 14px;     /* champs, tuiles internes */
 
   --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* --ios-gap : bande que iOS 26 laisse sous l'appli installée (posé par app.js) */
+  --safe-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ios-gap, 0px)));
+  --bar: #111113;
   --tabbar-h: 64px;
 }
 
 /* ============ Base ============ */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--iron); color: var(--chalk); }
+/* Le fond de la page a la couleur de la barre d'onglets : si iOS laisse une bande en bas, elle prolonge la barre */
+html, body { margin: 0; height: 100%; background: var(--bar); color: var(--chalk); }
 body {
   font-family: var(--text);
   font-size: 16px;
@@ -77,7 +80,7 @@ svg { display: block; }
 .num { font-family: var(--display); font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
 
-#app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--iron); }
 
 /* ============ Vue + titres ============ */
 .view {
@@ -135,9 +138,7 @@ h2.section small { font-family: var(--text); font-size: 14px; font-weight: 500; 
   padding: 0 8px var(--safe-bottom);
   display: grid; grid-template-columns: repeat(5, 1fr);
   border-radius: 24px 24px 0 0;
-  background: rgba(16, 16, 18, 0.92);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  backdrop-filter: blur(24px) saturate(140%);
+  background: var(--bar);
   border-top: 1px solid var(--line-2);
 }
 /* L'indicateur glisse d'un onglet à l'autre (translateX posé par app.js) */
