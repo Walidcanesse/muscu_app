@@ -35,6 +35,7 @@ const DEFAULT = () => ({
   meals: [],            // repas types
   weights: {},          // { 'AAAA-MM-JJ': kg }
   steps: {},            // { 'AAAA-MM-JJ': nombre de pas }
+  feedback: { sound: true, haptics: true }, // sons d'interface et vibrations
 });
 
 function load() {
@@ -42,7 +43,8 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT();
     const data = JSON.parse(raw);
-    return { ...DEFAULT(), ...data };
+    const d = DEFAULT();
+    return { ...d, ...data, feedback: { ...d.feedback, ...(data.feedback || {}) } };
   } catch {
     return DEFAULT();
   }
@@ -64,7 +66,8 @@ export function update(fn, { silent = false } = {}) {
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
 export function replaceAll(data) {
-  const fresh = { ...DEFAULT(), ...data };
+  const d = DEFAULT();
+  const fresh = { ...d, ...data, feedback: { ...d.feedback, ...(data.feedback || {}) } };
   Object.keys(state).forEach((k) => delete state[k]);
   Object.assign(state, fresh);
   save();

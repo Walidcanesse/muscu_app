@@ -1,6 +1,7 @@
 // Calendrier : vue du mois, puis détail nutrition et sport du jour choisi.
 import { state, update, dayKey, addDays, fromKey, dayTotals, getGoals, dayExpenditure } from './store.js';
 import { icons, esc, fmt, fmtKg, longDate, toast } from './ui.js';
+import { feedback } from './feedback.js';
 import { setsSummary, setWorkoutDay } from './workout.js';
 import { openSteps } from './energy.js';
 import { setFoodDay } from './food.js';
@@ -131,6 +132,7 @@ export function renderCalendar(root) {
     }
     const c = e.target.closest('[data-k]');
     if (c && !c.disabled) {
+      if (c.dataset.k !== selected) feedback('select');
       selected = c.dataset.k;
       root.querySelectorAll('.cal-day.sel').forEach((x) => x.classList.remove('sel'));
       c.classList.add('sel');

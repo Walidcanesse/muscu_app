@@ -1,5 +1,6 @@
 import { state, update, dayKey, addDays, dayTotals, weightAvg, fromKey, getGoals, MODE_LABEL } from './store.js';
-import { icons, esc, fmt, fmtKg, parseNum, longDate, relDay, countUp, openSheet, toast, haptic, durLabel } from './ui.js';
+import { icons, esc, fmt, fmtKg, parseNum, longDate, relDay, countUp, openSheet, toast, durLabel } from './ui.js';
+import { feedback } from './feedback.js';
 import { sparkline } from './charts.js';
 import { openSettings } from './settings.js';
 import { absTotalSec } from './abs.js';
@@ -215,16 +216,17 @@ export function openWeighSheet() {
         if (d) {
           val = Math.round(((parseNum(input.value) ?? val) + Number(d.dataset.d)) * 10) / 10;
           input.value = fmt(val, 1);
-          haptic(8);
+          feedback('step', { dir: Math.sign(Number(d.dataset.d)) });
         }
         const del = e.target.closest('[data-del]');
         if (del) {
           update((st) => { delete st.weights[del.dataset.del]; });
           del.closest('.row').remove();
+          feedback('delete');
         }
         if (e.target.closest('[data-save]')) {
           const v = parseNum(input.value);
-          if (!v || v < 30 || v > 250) { input.focus(); return; }
+          if (!v || v < 30 || v > 250) { feedback('error'); input.focus(); return; }
           update((st) => { st.weights[today] = Math.round(v * 10) / 10; });
           s.close();
           toast('Pesée enregistrée');

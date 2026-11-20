@@ -1,4 +1,6 @@
 // Icônes, feuilles, toast et petits utilitaires d'interface.
+import { feedback } from './feedback.js';
+
 const S = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 
 export const icons = {
@@ -80,16 +82,15 @@ export function relDay(d) {
 
 /* ---------- Toast ---------- */
 let toastTimer;
-export function toast(msg, { error = false } = {}) {
+/** fb : retour son et toucher ('success' par défaut, 'error' pour une erreur, 'delete', ou false pour aucun). */
+export function toast(msg, { error = false, fb } = {}) {
+  const kind = fb === undefined ? (error ? 'error' : 'success') : fb;
+  if (kind) feedback(kind);
   const t = document.getElementById('toast');
   t.innerHTML = `${error ? '' : icons.check}<span>${esc(msg)}</span>`;
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
-}
-
-export function haptic(ms = 12) {
-  if (navigator.vibrate) navigator.vibrate(ms);
 }
 
 /* ---------- Compteur animé ---------- */
@@ -162,8 +163,11 @@ export function openSheet({ title, body, onMount, onClose }) {
     setTimeout(() => wrap.remove(), 450);
     onClose && onClose();
   }
-  wrap.querySelector('.backdrop').addEventListener('click', close);
-  wrap.querySelector('[data-close]').addEventListener('click', close);
+  // Fermeture voulue par l'utilisateur (fond, croix, glisser) : petit souffle descendant.
+  // Une fermeture par le code (après « Enregistrer »…) reste muette : le retour de l'action suffit.
+  const dismiss = () => { if (!closed) feedback('close'); close(); };
+  wrap.querySelector('.backdrop').addEventListener('click', dismiss);
+  wrap.querySelector('[data-close]').addEventListener('click', dismiss);
 
   // Glisser vers le bas pour fermer
   let y0 = null, dy = 0;
@@ -177,7 +181,7 @@ export function openSheet({ title, body, onMount, onClose }) {
     if (y0 == null) return;
     y0 = null;
     wrap.classList.remove('dragging');
-    if (dy > 110) close(); else sheet.style.transform = '';
+    if (dy > 110) dismiss(); else sheet.style.transform = '';
   };
   wrap.querySelectorAll('.grab, .sheet-head').forEach((h) => {
     h.addEventListener('pointerdown', (e) => { if (!e.target.closest('button')) startDrag(e); });
@@ -187,6 +191,7 @@ export function openSheet({ title, body, onMount, onClose }) {
   });
 
   stack.push(api);
+  feedback('open');
   onMount && onMount(api);
   requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('open')));
   return api;

@@ -1,5 +1,6 @@
 import { state, update, dayKey, addDays, fromKey, uid } from './store.js';
-import { icons, esc, fmt, parseNum, longDate, openSheet, toast, haptic, closeAllSheets } from './ui.js';
+import { icons, esc, fmt, parseNum, longDate, openSheet, toast, closeAllSheets } from './ui.js';
+import { feedback } from './feedback.js';
 import { fuelCard, animateFuel } from './today.js';
 import { openSettings } from './settings.js';
 
@@ -246,10 +247,10 @@ function openProduct(p, { edit = false, grams, cta, onConfirm } = {}) {
       input.addEventListener('focus', () => input.select());
       s.body.addEventListener('click', (e) => {
         const c = e.target.closest('[data-g]');
-        if (c) { input.value = fmt(Number(c.dataset.g)); draw(); haptic(8); }
+        if (c) { input.value = fmt(Number(c.dataset.g)); draw(); feedback('step'); }
         if (e.target.closest('[data-save]')) {
           const v = parseNum(input.value);
-          if (!v || v <= 0) { input.focus(); return; }
+          if (!v || v <= 0) { feedback('error'); input.focus(); return; }
           s.close();
           if (onConfirm) return onConfirm(p, v);
           if (edit) {
@@ -263,7 +264,7 @@ function openProduct(p, { edit = false, grams, cta, onConfirm } = {}) {
         if (e.target.closest('[data-del]')) {
           update((st) => { st.food[currentDay] = (st.food[currentDay] || []).filter((x) => x.id !== p.id); });
           s.close();
-          toast('Retiré du journal');
+          toast('Retiré du journal', { fb: 'delete' });
         }
       });
     },
@@ -291,8 +292,8 @@ function openManual(prefill = {}) {
       $('[data-save]').onclick = () => {
         const name = $('#m-name').value.trim();
         const kcal = parseNum($('#m-kcal').value);
-        if (!name) { $('#m-name').focus(); return; }
-        if (kcal == null) { $('#m-kcal').focus(); return; }
+        if (!name) { feedback('error'); $('#m-name').focus(); return; }
+        if (kcal == null) { feedback('error'); $('#m-kcal').focus(); return; }
         const p = { name, brand: '', manual: true, code: null, per100: { kcal, p: parseNum($('#m-p').value) || 0, c: parseNum($('#m-c').value) || 0, f: parseNum($('#m-f').value) || 0, fib: parseNum($('#m-fib').value) || 0, sug: parseNum($('#m-sug').value) || 0 } };
         addEntry(p, 100);
         s.close();
@@ -362,14 +363,14 @@ function openFoodForm(food = null, { code = null, after } = {}) {
       s.body.addEventListener('click', (e) => {
         if (e.target.closest('[data-del]')) {
           update((st) => { st.foods = st.foods.filter((x) => x.id !== food.id); });
-          s.close(); toast('Aliment supprimé');
+          s.close(); toast('Aliment supprimé', { fb: 'delete' });
           return;
         }
         if (!e.target.closest('[data-save]')) return;
         const name = $('#f-name').value.trim();
         const kcal = parseNum($('#f-kcal').value);
-        if (!name) { $('#f-name').focus(); return; }
-        if (kcal == null) { $('#f-kcal').focus(); return; }
+        if (!name) { feedback('error'); $('#f-name').focus(); return; }
+        if (kcal == null) { feedback('error'); $('#f-kcal').focus(); return; }
         const rec = {
           id: food?.id || uid(),
           name, brand: $('#f-brand').value.trim(), img: '', code: code || food?.code || null,
@@ -454,7 +455,7 @@ function openMeal(id) {
         if (e.target.closest('[data-edit]')) { s.close(); setTimeout(() => openMealEditor(m), 200); }
         if (e.target.closest('[data-del]')) {
           update((st) => { st.meals = st.meals.filter((x) => x.id !== m.id); });
-          s.close(); toast('Repas supprimé');
+          s.close(); toast('Repas supprimé', { fb: 'delete' });
         }
       });
     },
@@ -508,14 +509,14 @@ function openMealEditor(meal = null, preset = null) {
       });
       s.body.addEventListener('click', (e) => {
         const r = e.target.closest('[data-k]');
-        if (e.target.closest('[data-rm]') && r) { items.splice(Number(r.dataset.k), 1); draw(); return; }
+        if (e.target.closest('[data-rm]') && r) { items.splice(Number(r.dataset.k), 1); draw(); feedback('delete'); return; }
         if (e.target.closest('[data-pick]')) {
           pickFood((p, g) => { items.push({ ...toItem({ ...p, grams: g }) }); draw(); });
           return;
         }
         if (e.target.closest('[data-save]')) {
           const name = s.body.querySelector('#ml-name').value.trim();
-          if (!name) { s.body.querySelector('#ml-name').focus(); return; }
+          if (!name) { feedback('error'); s.body.querySelector('#ml-name').focus(); return; }
           if (!items.length) { toast('Ajoute au moins un aliment', { error: true }); return; }
           update((st) => {
             const rec = { id: meal?.id || uid(), name, items };
@@ -634,7 +635,7 @@ function openScanner() {
     if (stopped) return;
     stop();
     el.querySelector('.scan-win').classList.add('hit');
-    haptic(40);
+    feedback('scan');
     msg.textContent = 'Recherche du produit…';
     try {
       const p = await fetchProduct(code);
@@ -701,7 +702,7 @@ function openTypeCode() {
       setTimeout(() => i.focus(), 450);
       s.body.querySelector('[data-go]').onclick = async () => {
         const code = i.value.replace(/\D/g, '');
-        if (code.length < 8) { i.focus(); return; }
+        if (code.length < 8) { feedback('error'); i.focus(); return; }
         const b = s.body.querySelector('[data-go]');
         b.disabled = true; b.textContent = 'Recherche…';
         try {

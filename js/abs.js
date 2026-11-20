@@ -1,5 +1,6 @@
 import { state, update, uid } from './store.js';
-import { icons, esc, durLabel, mmss, parseNum, openSheet, toast, haptic } from './ui.js';
+import { icons, esc, durLabel, mmss, parseNum, openSheet, toast } from './ui.js';
+import { feedback, haptic, audio, setAudioSession, holdAudio } from './feedback.js';
 import { openTechnique, techniqueKey } from './technique.js';
 
 const PREP = 5;
@@ -64,13 +65,13 @@ export function renderAbs(root) {
         if (key === 'rest') A.rest = Math.max(0, Math.min(60, A.rest + 5 * d));
         if (key === 'roundRest') A.roundRest = Math.max(0, Math.min(300, A.roundRest + 15 * d));
       });
-      haptic(8);
+      feedback('step', { dir: d });
       return;
     }
     const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'start') startTimer();
+    if (act === 'start') { haptic('select'); startTimer(); } // le chrono a ses propres sons
     if (act === 'edit') openAbsEditor();
-    if (act === 'voice') update((s) => { s.abs.voice = !s.abs.voice; });
+    if (act === 'voice') { update((s) => { s.abs.voice = !s.abs.voice; }); feedback('toggle', { on: state.abs.voice }); }
   };
 }
 
@@ -108,7 +109,7 @@ function openAbsEditor() {
       };
       s.body.addEventListener('click', (e) => {
         const r = e.target.closest('.er');
-        if (e.target.closest('[data-rm]') && r) { sync(); list.splice(Number(r.dataset.i), 1); box.innerHTML = rowsHtml(); }
+        if (e.target.closest('[data-rm]') && r) { sync(); list.splice(Number(r.dataset.i), 1); box.innerHTML = rowsHtml(); feedback('delete'); }
         if (e.target.closest('[data-up]') && r) {
           sync(); const i = Number(r.dataset.i);
           if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; box.innerHTML = rowsHtml(); }
@@ -127,13 +128,13 @@ function openAbsEditor() {
 }
 
 /* ---------- Son et voix ---------- */
-let ctx;
+// Contexte audio partagé avec les sons d'interface (feedback.js). Pendant le chrono, la session passe
+// en « playback » pour que les bips sonnent même en mode silencieux ; elle repasse en « ambient » à la fin.
+let ctx = null;
 function audioInit() {
-  try {
-    if (navigator.audioSession) navigator.audioSession.type = 'playback';
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
-  } catch { ctx = null; }
+  setAudioSession('playback');
+  ctx = audio({ force: true });
+  holdAudio(true);
 }
 function beep(freq = 880, dur = 0.12, vol = 0.35) {
   if (!ctx) return;
@@ -270,9 +271,9 @@ function startTimer() {
       s.classList.toggle('cur', cur);
     });
     if (announce) {
-      if (p.kind === 'work') { beep(1046, 0.35, 0.45); say(p.name); haptic(60); }
-      if (p.kind === 'rest') { beep(523, 0.3); say(`Repos. Ensuite, ${p.name}`); }
-      if (p.kind === 'round') { beep(523, 0.3); say(`Pause. Tour ${p.round} dans ${durLabel(p.dur).replace(' s', ' secondes')}`); }
+      if (p.kind === 'work') { beep(1046, 0.35, 0.45); say(p.name); haptic('work'); }
+      if (p.kind === 'rest') { beep(523, 0.3); say(`Repos. Ensuite, ${p.name}`); haptic('rest'); }
+      if (p.kind === 'round') { beep(523, 0.3); say(`Pause. Tour ${p.round} dans ${durLabel(p.dur).replace(' s', ' secondes')}`); haptic('rest'); }
       if (p.kind === 'prep') say(`Prépare-toi. ${p.name}`);
     }
     lastSec = null;
@@ -289,6 +290,7 @@ function startTimer() {
     $('.t-next').textContent = 'Bien joué.';
     $('.t-controls').innerHTML = `<button class="btn t-done-btn" data-t="close">Fermer</button>`;
     beep(784, 0.15); setTimeout(() => beep(1046, 0.4), 170);
+    haptic('success');
     say('Circuit terminé. Bien joué.');
     update((st) => { st.absLog.push(new Date().toISOString()); if (st.absLog.length > 200) st.absLog.shift(); });
   }
@@ -349,21 +351,26 @@ function startTimer() {
     try { speechSynthesis.cancel(); } catch { /* rien */ }
     wakeLock?.release?.().catch(() => {});
     wakeLock = null;
+    holdAudio(false);
+    setAudioSession('ambient'); // hors du chrono, les sons suivent de nouveau le bouton silencieux
     el.classList.add('closing');
     setTimeout(() => el.remove(), 400);
-    if (finished) toast('Circuit enregistré');
+    if (finished) toast('Circuit enregistré', { fb: false }); // la fin a déjà sonné
   }
 
   el.addEventListener('click', (e) => {
     const t = e.target.closest('[data-t]')?.dataset.t;
     if (!t) return;
-    haptic(10);
+    // Toucher seul : le chrono garde son propre univers sonore (précédent / suivant vibrent avec la nouvelle étape)
+    if (t === 'toggle' || t === 'close') haptic('select');
     if (t === 'close') return close();
     if (finished) return;
     if (t === 'toggle') {
       const btn = $('[data-t="toggle"]');
-      if (!paused) { paused = true; pausedLeft = Math.max(0, endAt - performance.now()); btn.innerHTML = icons.play; btn.setAttribute('aria-label', 'Reprendre'); try { speechSynthesis.cancel(); } catch { /* rien */ } }
-      else { paused = false; endAt = performance.now() + pausedLeft; btn.innerHTML = icons.pause; btn.setAttribute('aria-label', 'Pause'); audioInit(); }
+      // On ne remplace que l'icône : le libellé haptique posé sur le bouton (iPhone) reste en place
+      const setIcon = (svg) => { btn.querySelector('svg')?.remove(); btn.insertAdjacentHTML('afterbegin', svg); };
+      if (!paused) { paused = true; pausedLeft = Math.max(0, endAt - performance.now()); setIcon(icons.play); btn.setAttribute('aria-label', 'Reprendre'); try { speechSynthesis.cancel(); } catch { /* rien */ } }
+      else { paused = false; endAt = performance.now() + pausedLeft; setIcon(icons.pause); btn.setAttribute('aria-label', 'Pause'); audioInit(); }
     }
     if (t === 'next') go(idx + 1);
     if (t === 'prev') {

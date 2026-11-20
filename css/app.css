@@ -896,6 +896,38 @@ button.row:active { background: var(--iron-3); }
 #toast svg { width: 16px; height: 16px; color: var(--green); }
 #toast.show { transform: translate(-50%, 0); opacity: 1; }
 
+/* ============ Interrupteurs (Réglages) ============ */
+.sw-row { cursor: pointer; }
+.sw-row.off { opacity: 0.45; cursor: default; }
+.sw {
+  -webkit-appearance: none; appearance: none;
+  flex: none; position: relative; margin: 0;
+  width: 51px; height: 31px; border-radius: 16px;
+  background: rgba(120, 120, 128, 0.36);
+  transition: background 0.25s var(--ease);
+  cursor: pointer;
+}
+.sw::before {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 27px; height: 27px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 0.32s var(--spring), width 0.2s var(--ease);
+}
+.sw:checked { background: var(--green); }
+.sw:checked::before { transform: translateX(20px); }
+.sw:active::before { width: 31px; }
+.sw:checked:active::before { transform: translateX(16px); }
+.sw:disabled { cursor: default; }
+.sw:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
+
+/* ============ Retour haptique iPhone ============
+   Libellés d'interrupteurs invisibles : ils ne prennent ni place, ni focus, ni regard. */
+.hx-proxy { display: none !important; }
+.hx { position: absolute; inset: 0; border-radius: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.hx > input { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; opacity: 0; visibility: hidden; pointer-events: none; }
+:disabled > .hx, [disabled] > .hx { display: none; }
+
 /* ============ Mouvement réduit ============ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

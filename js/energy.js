@@ -1,6 +1,6 @@
 // Calories dépensées, pas (import depuis Santé via Raccourcis) et suivi consommé / dépensé / poids.
 import { state, update, dayKey, addDays, fromKey, dayTotals, dayExpenditure, weightAvg } from './store.js';
-import { icons, esc, fmt, fmtKg, parseNum, openSheet, toast, haptic, shortDate } from './ui.js';
+import { icons, esc, fmt, fmtKg, parseNum, openSheet, toast, shortDate } from './ui.js';
 
 const SHORTCUT = 'Pas vers Sport';
 const SEGS = [
@@ -81,7 +81,7 @@ export function openSteps(k = dayKey(), { pasteFirst = false } = {}) {
       const save = (v) => {
         update((st) => { if (v == null) delete st.steps[k]; else st.steps[k] = v; });
         s.close();
-        toast(v == null ? 'Pas effacés' : `${fmt(v)} pas enregistrés`);
+        toast(v == null ? 'Pas effacés' : `${fmt(v)} pas enregistrés`, { fb: v == null ? 'delete' : 'success' });
       };
       s.body.addEventListener('click', async (e) => {
         if (e.target.closest('[data-run]')) {
@@ -94,7 +94,6 @@ export function openSteps(k = dayKey(), { pasteFirst = false } = {}) {
             const txt = await navigator.clipboard.readText();
             const n = parseInt(String(txt).replace(/[^\d]/g, ''), 10);
             if (!Number.isFinite(n) || n > 200000) { toast('Aucun nombre de pas copié', { error: true }); return; }
-            haptic(20);
             save(n);
           } catch {
             toast('Collage refusé : saisis le nombre à la main', { error: true });

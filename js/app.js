@@ -6,6 +6,7 @@ import { renderAbs } from './abs.js';
 import { renderFood, resetFoodDay } from './food.js';
 import { renderCalendar, resetCalendar } from './calendar.js';
 import { checkStepsReturn } from './energy.js';
+import { initFeedback, feedback } from './feedback.js';
 
 const views = { today: renderToday, workout: renderWorkout, abs: renderAbs, food: renderFood, cal: renderCalendar };
 const root = document.getElementById('view');
@@ -16,6 +17,7 @@ let renderedDay = dayKey();
 let enterTimer = 0;
 
 hydrateIcons(document);
+initFeedback();
 
 // iOS 26 : l'appli installée n'occupe parfois pas tout l'écran (bande vide en bas).
 // On mesure la bande pour ne pas compter deux fois la zone de la barre de geste.
@@ -39,7 +41,7 @@ function show(name, { animate = true } = {}) {
   tabs.forEach((t) => t.setAttribute('aria-current', t.dataset.tab === name ? 'page' : 'false'));
   const i = tabs.findIndex((t) => t.dataset.tab === name);
   document.querySelector('.tab-ind').style.transform = `translateX(calc(${i} * (100% + 12px)))`;
-  if (changed) root.scrollTop = 0;
+  if (changed) { root.scrollTop = 0; feedback('tab'); }
   root.classList.toggle('has-fab', name === 'food');
   views[name](root);
   clearTimeout(enterTimer);
@@ -53,7 +55,7 @@ function show(name, { animate = true } = {}) {
 }
 
 tabs.forEach((t) => t.addEventListener('click', () => {
-  if (t.dataset.tab === current) { root.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (t.dataset.tab === current) { feedback('tap'); root.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   show(t.dataset.tab);
 }));
 window.addEventListener('tab', (e) => show(e.detail));

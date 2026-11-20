@@ -1,5 +1,6 @@
 import { state, update, replaceAll, uid, computePlan, ACTIVITY } from './store.js';
 import { icons, esc, parseNum, openSheet, toast, fmt } from './ui.js';
+import { feedback, canVibrate, isIOS, syncOverlays } from './feedback.js';
 
 export function openSettings() {
   const g = state.goals;
@@ -7,6 +8,7 @@ export function openSettings() {
   let adjust = state.plan.adjust;
   const prof = { ...state.profile };
   let exs = state.workout.map((e) => ({ ...e }));
+  const fbPrefs = state.feedback || { sound: true, haptics: true };
   const exRows = () => exs.map((e, i) => `
     <div class="er" data-i="${i}">
       <input class="input" data-k="name" value="${esc(e.name)}" placeholder="Nom de l'exercice" aria-label="Nom">
@@ -59,6 +61,19 @@ export function openSettings() {
 
       <div class="sheet-actions"><button class="btn block" data-save>Enregistrer</button></div>
 
+      <span class="label" style="margin-top:30px">Sons et vibrations</span>
+      <div class="group">
+        <label class="setting-row sw-row">
+          <div><div>Sons</div><div class="r-sub">Petits sons discrets, à volume bas</div></div>
+          <input type="checkbox" class="sw" switch role="switch" data-pref="sound" aria-label="Sons" ${fbPrefs.sound ? 'checked' : ''}>
+        </label>
+        <label class="setting-row sw-row ${canVibrate ? '' : 'off'}">
+          <div><div>Vibrations</div><div class="r-sub">${canVibrate ? 'Sur les validations, les réglages et les onglets' : 'Non disponibles sur cet appareil'}</div></div>
+          <input type="checkbox" class="sw" switch role="switch" data-pref="haptics" aria-label="Vibrations" ${fbPrefs.haptics && canVibrate ? 'checked' : ''} ${canVibrate ? '' : 'disabled'}>
+        </label>
+      </div>
+      <p class="hint">${isIOS ? 'Les sons suivent le bouton silencieux de l\'iPhone. ' : ''}Le chrono abdos garde ses propres bips et son annonce vocale.</p>
+
       <span class="label" style="margin-top:30px">Sauvegarde</span>
       <p class="hint" style="margin-top:0">Tes données restent uniquement sur ce téléphone. Exporte une sauvegarde de temps en temps (dans Fichiers ou iCloud Drive) pour ne rien perdre.</p>
       <div class="btn-row" style="margin-top:10px">
@@ -66,7 +81,7 @@ export function openSettings() {
         <button class="btn ghost" data-import>${icons.upload}Importer</button>
       </div>
       <input type="file" id="imp" accept="application/json,.json" hidden>
-      <p class="hint" style="text-align:center;margin-top:26px">Sport & Nutrition, version 1.9.4</p>`,
+      <p class="hint" style="text-align:center;margin-top:26px">Sport & Nutrition, version 2.0</p>`,
     onMount(s) {
       const $ = (q) => s.body.querySelector(q);
       const box = $('#ex-list');
@@ -120,10 +135,10 @@ export function openSettings() {
         const ac = e.target.closest('#act [data-act]');
         if (ac) { prof.activity = ac.dataset.act; drawPlan(); return; }
         const adj = e.target.closest('[data-adj]');
-        if (adj) { adjust = Math.max(-500, Math.min(500, adjust + Number(adj.dataset.adj))); drawPlan(); return; }
+        if (adj) { adjust = Math.max(-500, Math.min(500, adjust + Number(adj.dataset.adj))); drawPlan(); feedback('step', { dir: Math.sign(Number(adj.dataset.adj)) }); return; }
         const r = e.target.closest('.er');
-        if (e.target.closest('[data-rm]') && r) { sync(); exs.splice(Number(r.dataset.i), 1); box.innerHTML = exRows(); }
-        if (e.target.closest('[data-load]') && r) { sync(); const x = exs[Number(r.dataset.i)]; x.load = x.load === 'Lest' ? 'kg' : 'Lest'; box.innerHTML = exRows(); }
+        if (e.target.closest('[data-rm]') && r) { sync(); exs.splice(Number(r.dataset.i), 1); box.innerHTML = exRows(); feedback('delete'); }
+        if (e.target.closest('[data-load]') && r) { sync(); const x = exs[Number(r.dataset.i)]; x.load = x.load === 'Lest' ? 'kg' : 'Lest'; box.innerHTML = exRows(); feedback('toggle', { on: x.load === 'Lest' }); }
         if (e.target.closest('[data-add]')) { sync(); exs.push({ id: uid(), name: '', sets: 3, load: 'kg' }); box.innerHTML = exRows(); box.lastElementChild.querySelector('input').focus(); }
         if (e.target.closest('[data-save]')) {
           sync();
@@ -154,6 +169,12 @@ export function openSettings() {
         if (e.target.closest('[data-export]')) exportData();
         if (e.target.closest('[data-import]')) $('#imp').click();
       });
+      // Interrupteurs : appliqués tout de suite, sans attendre « Enregistrer »
+      s.body.querySelectorAll('[data-pref]').forEach((sw) => sw.addEventListener('change', () => {
+        update((st) => { st.feedback = { ...(st.feedback || {}), [sw.dataset.pref]: sw.checked }; }, { silent: true });
+        if (sw.dataset.pref === 'haptics') syncOverlays();
+        feedback('toggle', { on: sw.checked });
+      }));
       $('#imp').addEventListener('change', async (e) => {
         const f = e.target.files[0];
         if (!f) return;
@@ -161,6 +182,7 @@ export function openSettings() {
           const data = JSON.parse(await f.text());
           if (!data || typeof data !== 'object' || !('goals' in data)) throw new Error('format');
           replaceAll(data);
+          syncOverlays();
           s.close();
           toast('Sauvegarde importée');
         } catch {

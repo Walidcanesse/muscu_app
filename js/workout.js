@@ -1,5 +1,6 @@
 import { state, update, lastSessionFor, uid, dayKey, addDays, fromKey } from './store.js';
-import { icons, esc, fmt, fmtKg, parseNum, relDay, longDate, openSheet, toast, haptic, shortDate, cap } from './ui.js';
+import { icons, esc, fmt, fmtKg, parseNum, relDay, longDate, openSheet, toast, shortDate, cap } from './ui.js';
+import { feedback } from './feedback.js';
 import { lineChart } from './charts.js';
 import { openTechnique, techniqueKey } from './technique.js';
 
@@ -191,17 +192,19 @@ export function renderWorkout(root) {
     if (chk && card) return toggleSet(root, card, chk);
     if (t.closest('[data-addset]') && card) {
       update((st) => { const l = ensureDraft(st).entries[card.dataset.ex]; l.push({ kg: null, reps: null, done: false }); });
+      feedback('step', { dir: 1 });
       return;
     }
     if (t.closest('[data-rmset]') && card) {
       update((st) => { const l = ensureDraft(st).entries[card.dataset.ex]; if (l.length > 1) l.pop(); });
+      feedback('step', { dir: -1 });
       return;
     }
     const cm = t.closest('[data-cmin]');
     if (cm) {
       update((st) => { const c = ensureDraft(st).cardio; c.min = Math.max(1, Math.min(60, c.min + Number(cm.dataset.cmin))); }, { silent: true });
       root.querySelector('#cmin').textContent = state.draft.cardio.min;
-      haptic(8);
+      feedback('step', { dir: Number(cm.dataset.cmin) });
       return;
     }
     const cd = t.closest('[data-cardio]');
@@ -213,7 +216,7 @@ export function renderWorkout(root) {
       cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop');
       cd.closest('.ex').classList.toggle('done', on);
       refreshFinish(root);
-      haptic(15);
+      feedback(on ? 'check' : 'toggle', { on: false });
       return;
     }
     const sel = t.closest('[data-sel]');
@@ -266,14 +269,14 @@ function toggleSet(root, card, chk) {
     } else s.done = false;
   }, { silent: true });
   const s = state.draft.entries[exId][j];
-  if (!s.reps) return;
+  if (!s.reps) { feedback('error'); return; } // rien à valider : on attend le nombre de répétitions
   kgIn.value = s.kg ?? '';
   repsIn.value = s.reps ?? '';
   chk.classList.toggle('on', s.done);
   chk.setAttribute('aria-pressed', s.done);
   row.classList.toggle('on', s.done);
   chk.classList.remove('pop'); void chk.offsetWidth; chk.classList.add('pop');
-  haptic(15);
+  feedback(s.done ? 'check' : 'toggle', { on: false });
   const list = state.draft.entries[exId];
   card.querySelectorAll('.ex-dots i').forEach((dot, k) => dot.classList.toggle('on', !!list[k]?.done));
   const allDone = list.every((x) => x.done);
@@ -318,7 +321,7 @@ function confirmCancel() {
     body: `<p class="hint" style="font-size:15px;margin-top:0">Les séries notées dans cette séance seront effacées. Tes séances déjà terminées ne sont pas touchées.</p>
       <div class="sheet-actions"><button class="btn block danger" data-yes>Abandonner la séance</button><button class="btn block ghost" data-no>Continuer la séance</button></div>`,
     onMount(s) {
-      s.body.querySelector('[data-yes]').onclick = () => { update((st) => { st.draft = null; }); s.close(); };
+      s.body.querySelector('[data-yes]').onclick = () => { update((st) => { st.draft = null; }); s.close(); feedback('delete'); };
       s.body.querySelector('[data-no]').onclick = () => s.close();
     },
   });
@@ -341,7 +344,7 @@ function openSessionSheet(id) {
       sh.body.querySelector('[data-del]').onclick = () => {
         update((st) => { st.sessions = st.sessions.filter((x) => x.id !== id); });
         sh.close();
-        toast('Séance supprimée');
+        toast('Séance supprimée', { fb: 'delete' });
       };
     },
   });
@@ -360,7 +363,8 @@ function openDayPicker(root) {
       <p class="hint">La séance sera enregistrée à ce jour-là : elle apparaîtra dans le calendrier et dans tes calories dépensées.</p>`,
     onMount(s) {
       const choose = (k) => {
-        if (!k || k > t) return;
+        if (!k || k > t) { feedback('error'); return; }
+        feedback('select');
         setWorkoutDay(k);
         s.close();
         renderWorkout(root);
