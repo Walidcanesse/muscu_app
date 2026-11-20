@@ -105,7 +105,7 @@ function progressBlock() {
       <div class="chart-top">
         <div><span class="num">${kind === 'kg' ? fmtKg(lastP.v) + ' kg' : fmt(lastP.v) + ' reps'}</span>
         <small>${kind === 'kg' ? 'Force estimée (1RM)' : 'Répétitions au total'}</small></div>
-        ${pts.length > 1 ? `<div style="text-align:right"><span class="num" style="font-size:22px;color:${diff >= 0 ? 'var(--green)' : 'var(--yellow)'}">${diff >= 0 ? '+' : '−'}${kind === 'kg' ? fmtKg(Math.abs(Math.round(diff * 10) / 10)) : fmt(Math.abs(diff))}</span><small>depuis le ${shortDate(first.date)}</small></div>` : ''}
+        ${pts.length > 1 ? `<div style="text-align:right"><span class="num" style="font-size:19px;color:${diff >= 0 ? 'var(--green)' : 'var(--yellow)'}">${diff >= 0 ? '+' : '−'}${kind === 'kg' ? fmtKg(Math.abs(Math.round(diff * 10) / 10)) : fmt(Math.abs(diff))}</span><small>depuis le ${shortDate(first.date)}</small></div>` : ''}
       </div>
       ${lineChart(pts.map((p) => p.v), { labels: pts.map((p) => shortDate(p.date)), decimals: kind === 'kg' ? 1 : 0 })}`;
   }

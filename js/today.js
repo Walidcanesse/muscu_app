@@ -142,7 +142,7 @@ export function openWeighSheet() {
       <div class="qty">
         <div class="stepper" style="flex:1;justify-content:space-between">
           <button data-d="-0.1" aria-label="Moins 100 g">${icons.minus}</button>
-          <input class="field num" id="w-in" inputmode="decimal" value="${fmt(val, 1)}" aria-label="Poids en kg" style="background:transparent;font-size:34px;height:56px">
+          <input class="field num" id="w-in" inputmode="decimal" value="${fmt(val, 1)}" aria-label="Poids en kg" style="background:transparent;font-size:30px;height:56px">
           <button data-d="0.1" aria-label="Plus 100 g">${icons.plus}</button>
         </div>
         <span class="unit">kg</span>

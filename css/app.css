@@ -1,7 +1,8 @@
 /* ============ Fonte — design system ============ */
-@font-face { font-family: "Barlow C"; src: url("../fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
-@font-face { font-family: "Barlow C"; src: url("../fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
-@font-face { font-family: "Barlow C"; src: url("../fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+@font-face { font-family: "Rounded Fallback"; src: url("../fonts/nunito-latin-600-normal.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+@font-face { font-family: "Rounded Fallback"; src: url("../fonts/nunito-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Rounded Fallback"; src: url("../fonts/nunito-latin-800-normal.woff2") format("woff2"); font-weight: 800 900; font-display: swap; }
 
 :root {
   /* Fonte : graphite des barres, craie, couleurs des disques olympiques */
@@ -20,8 +21,8 @@
   --yellow: #F2C230;  /* disque 15 kg — lipides */
   --green: #34C27A;   /* disque 10 kg — validé, progression */
 
-  --display: "Barlow C", "SF Pro Display", -apple-system, system-ui, sans-serif;
-  --text: -apple-system, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  --display: ui-rounded, "SF Pro Rounded", "Rounded Fallback", system-ui, sans-serif;
+  --text: ui-rounded, "SF Pro Rounded", "Rounded Fallback", system-ui, sans-serif;
 
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -65,10 +66,10 @@ svg { display: block; }
 .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 14px 0 22px; }
 .head h1 {
   font-family: var(--display);
-  font-weight: 700;
-  font-size: 44px;
-  line-height: 0.92;
-  letter-spacing: -0.005em;
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 .head .sub { color: var(--chalk-3); font-size: 15px; margin-top: 6px; }
@@ -85,7 +86,8 @@ svg { display: block; }
 h2.section {
   font-family: var(--display);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 20px;
+  letter-spacing: -0.01em;
   margin: 34px 0 12px;
   display: flex; align-items: baseline; justify-content: space-between;
 }
@@ -137,7 +139,7 @@ h2.section small { font-family: var(--text); font-size: 14px; font-weight: 400; 
 /* ============ Aujourd'hui ============ */
 .fuel { position: relative; padding: 22px 20px 20px; border-radius: 26px; background: var(--iron-2); border: 1px solid var(--line); overflow: hidden; }
 .fuel-top { display: flex; align-items: baseline; gap: 8px; }
-.fuel-big { font-family: var(--display); font-weight: 700; font-size: 76px; line-height: 0.85; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.fuel-big { font-family: var(--display); font-weight: 800; font-size: 58px; line-height: 0.95; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
 .fuel-of { color: var(--chalk-3); font-size: 15px; }
 .fuel-left { margin-top: 8px; color: var(--chalk-2); font-size: 15px; }
 .fuel-left b { color: var(--chalk); font-weight: 600; }
@@ -151,8 +153,8 @@ h2.section small { font-family: var(--text); font-size: 14px; font-weight: 400; 
 .macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .macro .m-name { font-size: 13px; color: var(--chalk-3); display: flex; align-items: center; gap: 6px; }
 .macro .m-name i { width: 8px; height: 8px; border-radius: 2px; display: block; }
-.macro .m-val { font-family: var(--display); font-weight: 600; font-size: 26px; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.macro .m-val small { font-size: 16px; color: var(--chalk-3); font-weight: 500; }
+.macro .m-val { font-family: var(--display); font-weight: 700; font-size: 21px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.macro .m-val small { font-size: 13px; color: var(--chalk-3); font-weight: 500; }
 .bar { height: 4px; border-radius: 2px; background: var(--iron-4); overflow: hidden; margin-top: 8px; }
 .bar > i { display: block; height: 100%; border-radius: 2px; width: 0; transition: width 0.9s var(--ease); }
 
@@ -171,10 +173,10 @@ h2.section small { font-family: var(--text); font-size: 14px; font-weight: 400; 
 
 .weight { padding: 18px 20px; border-radius: 22px; background: var(--iron-2); border: 1px solid var(--line); }
 .weight-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
-.weight-big { font-family: var(--display); font-weight: 700; font-size: 44px; line-height: 0.9; font-variant-numeric: tabular-nums; }
-.weight-big small { font-size: 20px; color: var(--chalk-3); font-weight: 500; margin-left: 3px; }
+.weight-big { font-family: var(--display); font-weight: 800; font-size: 36px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.weight-big small { font-size: 17px; color: var(--chalk-3); font-weight: 500; margin-left: 3px; }
 .weight-meta { color: var(--chalk-3); font-size: 13px; margin-top: 6px; }
-.delta { font-family: var(--display); font-weight: 600; font-size: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+.delta { font-family: var(--display); font-weight: 700; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
 .delta.down { color: var(--green); }
 .delta.up { color: var(--yellow); }
 .delta-label { font-size: 12px; color: var(--chalk-3); text-align: right; }
@@ -199,7 +201,7 @@ button.row:active { background: var(--iron-3); }
 .row .r-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .r-sub { font-size: 13px; color: var(--chalk-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .r-end { text-align: right; flex: none; }
-.row .r-end .num { font-size: 20px; font-weight: 600; }
+.row .r-end .num { font-size: 17px; font-weight: 700; }
 .row .r-end small { display: block; font-size: 12px; color: var(--chalk-3); }
 .row .chev { width: 16px; height: 16px; color: var(--chalk-3); flex: none; }
 
@@ -227,11 +229,11 @@ button.row:active { background: var(--iron-3); }
 .sets-head { font-size: 12px; color: var(--chalk-3); padding: 0 0 6px; }
 .sets-head span:nth-child(2), .sets-head span:nth-child(3) { padding-left: 2px; }
 .set { margin-bottom: 8px; }
-.set-n { font-family: var(--display); font-weight: 600; font-size: 18px; color: var(--chalk-3); text-align: center; }
+.set-n { font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--chalk-3); text-align: center; }
 .field {
   width: 100%; height: 46px; border-radius: 12px; border: 1px solid transparent;
   background: var(--iron-3); color: var(--chalk);
-  font-family: var(--display); font-weight: 600; font-size: 22px; text-align: center;
+  font-family: var(--display); font-weight: 700; font-size: 18px; text-align: center;
   font-variant-numeric: tabular-nums;
   transition: border-color 0.2s, background 0.2s;
   -webkit-appearance: none; appearance: none;
@@ -257,7 +259,7 @@ button.row:active { background: var(--iron-3); }
 .stepper button { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; transition: background 0.15s, transform 0.2s var(--spring); }
 .stepper button:active { background: var(--iron-4); transform: scale(0.9); }
 .stepper button svg { width: 18px; height: 18px; }
-.stepper .num { min-width: 46px; text-align: center; font-size: 22px; font-weight: 600; }
+.stepper .num { min-width: 46px; text-align: center; font-size: 18px; font-weight: 700; }
 
 .seg { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; scrollbar-width: none; }
 .seg::-webkit-scrollbar { display: none; }
@@ -266,7 +268,7 @@ button.row:active { background: var(--iron-3); }
 
 .chart { border-radius: 22px; background: var(--iron-2); border: 1px solid var(--line); padding: 16px 16px 12px; }
 .chart-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; }
-.chart-top .num { font-size: 34px; font-weight: 700; line-height: 1; }
+.chart-top .num { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
 .chart-top small { display: block; font-size: 13px; color: var(--chalk-3); margin-top: 4px; }
 .chart svg { width: 100%; height: 150px; overflow: visible; }
 .path { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.1s var(--ease) 0.1s forwards; }
@@ -276,15 +278,15 @@ button.row:active { background: var(--iron-3); }
 .circuit { list-style: none; margin: 0; padding: 0; }
 .circuit li { display: flex; align-items: center; gap: 14px; padding: 14px 16px; position: relative; }
 .circuit li + li::before { content: ""; position: absolute; left: 58px; right: 0; top: 0; height: 1px; background: var(--line); }
-.circuit .c-n { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(229, 72, 77, 0.14); color: var(--red); font-family: var(--display); font-weight: 700; font-size: 17px; flex: none; }
+.circuit .c-n { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(229, 72, 77, 0.14); color: var(--red); font-family: var(--display); font-weight: 800; font-size: 14px; flex: none; }
 .circuit .c-name { flex: 1; font-weight: 500; }
-.circuit .c-t { font-family: var(--display); font-weight: 600; font-size: 19px; color: var(--chalk-2); }
+.circuit .c-t { font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--chalk-2); }
 .circuit li.rest .c-n { background: rgba(61, 126, 247, 0.14); color: var(--blue); }
 .circuit li.rest .c-name { color: var(--chalk-3); font-weight: 400; font-size: 14px; }
 
 .abs-total { display: flex; gap: 22px; margin: 4px 0 18px; }
 .abs-total div { font-size: 13px; color: var(--chalk-3); }
-.abs-total .num { display: block; font-size: 30px; font-weight: 700; color: var(--chalk); line-height: 1.05; }
+.abs-total .num { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--chalk); line-height: 1.05; }
 .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; position: relative; }
 .setting-row + .setting-row::before { content: ""; position: absolute; left: 16px; right: 0; top: 0; height: 1px; background: var(--line); }
 .setting-row .r-sub { font-size: 13px; color: var(--chalk-3); }
@@ -308,7 +310,7 @@ button.row:active { background: var(--iron-3); }
 .timer.finish { background: var(--green); color: var(--iron); }
 
 .t-top { display: flex; justify-content: space-between; align-items: center; }
-.t-round { font-family: var(--display); font-weight: 600; font-size: 20px; opacity: 0.85; }
+.t-round { font-family: var(--display); font-weight: 700; font-size: 16px; opacity: 0.85; }
 .t-close { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.18); }
 .t-close svg { width: 20px; height: 20px; }
 .t-progress { display: flex; gap: 4px; margin-top: 14px; }
@@ -321,7 +323,7 @@ button.row:active { background: var(--iron-3); }
 .t-kind { font-size: 17px; font-weight: 500; opacity: 0.8; min-height: 24px; }
 .t-name {
   font-family: var(--display); font-weight: 700;
-  font-size: clamp(40px, 12.5vw, 64px); line-height: 0.95;
+  font-size: clamp(30px, 9vw, 44px); line-height: 1.08; letter-spacing: -0.025em;
   margin: 8px 0 26px; max-width: 12ch; min-height: 2em;
   display: flex; align-items: center; justify-content: center;
 }
@@ -338,7 +340,7 @@ button.row:active { background: var(--iron-3); }
 .timer.finish .t-ring .prog { stroke: var(--iron); }
 .t-count {
   position: absolute; inset: 0; display: grid; place-items: center;
-  font-family: var(--display); font-weight: 700; font-size: min(36vw, 150px); line-height: 1;
+  font-family: var(--display); font-weight: 800; font-size: min(26vw, 110px); line-height: 1; letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
 .t-count.tick { animation: tick 0.35s var(--ease); }
@@ -415,14 +417,14 @@ button.row:active { background: var(--iron-3); }
 .product-head h3 { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.2; }
 .product-head p { margin: 3px 0 0; font-size: 14px; color: var(--chalk-3); }
 .qty { display: flex; align-items: center; gap: 10px; margin: 20px 0 6px; }
-.qty .field { height: 60px; font-size: 32px; flex: 1; }
-.qty .unit { font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--chalk-3); }
+.qty .field { height: 60px; font-size: 28px; flex: 1; }
+.qty .unit { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--chalk-3); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .chips button { padding: 7px 12px; border-radius: 10px; background: var(--iron-3); font-size: 14px; font-weight: 500; color: var(--chalk-2); }
 .chips button:active { background: var(--iron-4); }
 .calc { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
 .calc div { background: var(--iron-3); border-radius: 14px; padding: 10px 6px; text-align: center; }
-.calc .num { display: block; font-size: 24px; font-weight: 700; line-height: 1.1; }
+.calc .num { display: block; font-size: 20px; font-weight: 800; line-height: 1.1; }
 .calc small { font-size: 12px; color: var(--chalk-3); }
 .calc .p .num { color: var(--red); }
 .calc .c .num { color: var(--blue); }
@@ -474,7 +476,7 @@ button.row:active { background: var(--iron-3); }
 .grab { padding: 10px 0 4px; display: grid; place-items: center; touch-action: none; flex: none; }
 .grab i { width: 38px; height: 5px; border-radius: 3px; background: var(--iron-4); }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 20px 10px; touch-action: none; flex: none; }
-.sheet-head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; }
+.sheet-head h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 24px; line-height: 1.1; letter-spacing: -0.02em; }
 .sheet-head .icon-btn { width: 34px; height: 34px; background: var(--iron-3); }
 .sheet-head .icon-btn svg { width: 16px; height: 16px; }
 .sheet-body { overflow-y: auto; padding: 6px 20px calc(var(--safe-bottom) + 24px); -webkit-overflow-scrolling: touch; }
