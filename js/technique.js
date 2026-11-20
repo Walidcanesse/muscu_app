@@ -253,6 +253,60 @@ const POV = {
   },
 };
 
+
+/* ================= Vues de dos ================= */
+const BACK = {
+  tractions(t) {
+    const f = { s: 0.8, x: 24, y: 6 };
+    const T = (q) => [f.x + f.s * q[0], f.y + f.s * q[1]];
+    const hipY = lerp(132, 84, t);
+    const sc = [120, hipY - 48];
+    const shR = [135, sc[1]], shL = [105, sc[1]];
+    const gripR = [142, 24], gripL = [98, 24];
+    const [elbR, wriR] = ik(shR, gripR, L.ua, L.fa, 1);
+    const [elbL, wriL] = ik(shL, gripL, L.ua, L.fa, -1);
+    const hipR = [128, hipY], hipL = [112, hipY];
+    // omoplates : descendent et se rapprochent en haut
+    const bY = sc[1] + lerp(8, 13, t), bX = lerp(9, 6, t);
+    const scene = `
+      <rect x="40" y="21" width="160" height="6" rx="3" fill="${PROP}"/><rect x="40" y="0" width="5" height="22" fill="${PROP_2}"/><rect x="195" y="0" width="5" height="22" fill="${PROP_2}"/>
+      ${seg(hipL, [hipL[0] - 2, hipY + 37], 11, NEAR)}${seg([hipL[0] - 2, hipY + 37], [hipL[0] - 1, hipY + 70], 10, NEAR)}
+      ${seg(hipR, [hipR[0] + 2, hipY + 37], 11, NEAR)}${seg([hipR[0] + 2, hipY + 37], [hipR[0] + 1, hipY + 70], 10, NEAR)}
+      <path d="M${shL[0] - 3},${shL[1]} L${shR[0] + 3},${shR[1]} L${hipR[0]},${hipY} L${hipL[0]},${hipY} Z" fill="${NEAR}" stroke="${NEAR}" stroke-width="10" stroke-linejoin="round"/>
+      ${seg([120, sc[1] + 4], [120, hipY - 2], 1.6, '#A8A8B0')}
+      <ellipse cx="${120 - bX}" cy="${bY}" rx="5" ry="8" fill="none" stroke="#A8A8B0" stroke-width="1.6"/>
+      <ellipse cx="${120 + bX}" cy="${bY}" rx="5" ry="8" fill="none" stroke="#A8A8B0" stroke-width="1.6"/>
+      ${seg(sc, [120, sc[1] - 16], 8, NEAR)}${dot([120, sc[1] - 16], 9.5, NEAR)}
+      ${seg(shL, elbL, 10, NEAR)}${seg(elbL, wriL, 9, NEAR)}${seg(shR, elbR, 10, NEAR)}${seg(elbR, wriR, 9, NEAR)}`;
+    const mk = (pt, text, dx, dy, from = 0, anchor = 'middle') => (t < from ? '' : `${seg(T(pt), [T(pt)[0] + dx, T(pt)[1] + dy], 1, 'rgba(52,209,122,.6)')}${dot(T(pt), 3.4, CUE)}${tag(T(pt)[0] + dx, T(pt)[1] + dy - 2, text, anchor)}`);
+    return `${floor(182)}<g transform="translate(${f.x} ${f.y}) scale(${f.s})">${scene}</g>
+      ${mk([120 + bX, bY], 'Omoplates vers le bas', 48, 26, 0, 'start')}
+      ${mk(elbL, 'Coudes vers les côtes', -30, 20, 0.35, 'end')}`;
+  },
+  dc(t) {
+    // Vue depuis la tête du banc : la barre, les avant-bras et la largeur de prise
+    const barY = lerp(72, 108, t);
+    const shR = [142, 124], shL = [98, 124];
+    const hR = [156, barY], hL = [84, barY];
+    const eR = [hR[0] + lerp(0, 2, t), barY + 25], eL = [hL[0] - lerp(0, 2, t), barY + 25];
+    const scene = `
+      ${floor()}
+      <rect x="104" y="138" width="32" height="9" rx="4.5" fill="${PROP}"/><rect x="116" y="147" width="8" height="25" fill="${PROP_2}"/>
+      <ellipse cx="120" cy="${118}" rx="27" ry="16" fill="#C9C9CF"/>
+      ${seg(shL, eL, 10, NEAR)}${seg(shR, eR, 10, NEAR)}
+      ${seg(eL, hL, 9, NEAR)}${seg(eR, hR, 9, NEAR)}
+      ${seg([28, barY], [212, barY], 4, '#5A5A62')}
+      <rect x="30" y="${barY - 23}" width="10" height="46" rx="3" fill="${PROP}"/><rect x="200" y="${barY - 23}" width="10" height="46" rx="3" fill="${PROP}"/>
+      ${dot(hL, 5.5, NEAR)}${dot(hR, 5.5, NEAR)}
+      ${dot([120, 134], 10.5, NEAR)}`;
+    const midF = [eR[0], (eR[1] + hR[1]) / 2];
+    return `${scene}
+      ${guide(hR[0], barY - 34, hR[0], barY + 40)}
+      ${seg(midF, [midF[0] + 26, midF[1] + 34], 1, 'rgba(52,209,122,.6)')}${dot(midF, 3.4, CUE)}${tag(midF[0] + 26, midF[1] + 34, 'Avant-bras verticaux', 'start')}
+      ${tag(120, Math.max(18, barY - 36), 'Prise un peu plus large que les épaules')}`;
+  },
+};
+
 /* ================= Bibliothèque d'exercices ================= */
 const BAR = [128, 26];
 const LIB = {
@@ -268,6 +322,7 @@ const LIB = {
       marks: [{ at: 'elb1', text: 'Coudes vers les hanches', dx: 30, dy: 24, anchor: 'start' }, { at: 'head', text: 'Menton au-dessus', dx: -40, dy: 4, anchor: 'end', from: 0.75 }],
     },
     pov: POV.tractions,
+    back: BACK.tractions,
     seq: [{ to: 1, dur: 1100, label: 'Monte en tirant les coudes' }, { hold: 400, label: 'Menton au-dessus de la barre' }, { to: 0, dur: 2300, label: 'Descends lentement' }, { hold: 500, label: 'Bras tendus, épaules engagées' }],
     tips: [
       'Prise paumes vers toi, mains à largeur d\'épaules.',
@@ -289,6 +344,7 @@ const LIB = {
       marks: [{ at: 'sho', text: 'Omoplates serrées', dx: -6, dy: 40 }, { at: 'wri1', text: 'Bas des pecs', dx: 36, dy: -8, anchor: 'start', from: 0.7 }],
     },
     pov: POV.dc,
+    back: BACK.dc,
     seq: [{ hold: 400, label: 'Bras tendus, barre au-dessus des épaules' }, { to: 1, dur: 1800, label: 'Descends en contrôlant' }, { hold: 250, label: 'Touche légèrement la poitrine' }, { to: 0, dur: 1000, label: 'Pousse' }],
     tips: [
       'Yeux sous la barre, omoplates serrées et basses, fesses sur le banc, pieds bien à plat.',
@@ -436,6 +492,7 @@ function poseAt(ex, t) {
 export function renderFrame(key, view, t) {
   const ex = LIB[key];
   if (view === 'pov') return ex.pov(t);
+  if (view === 'back') return ex.back(t);
   const p = poseAt(ex, t);
   const d = ex.side;
   if (d.front) {
@@ -483,6 +540,7 @@ export function openTechnique(name) {
     body: `
       <div class="seg fill" role="group" aria-label="Vue">
         <button data-view="side" aria-pressed="true">${ex.side.title}</button>
+        ${ex.back ? '<button data-view="back" aria-pressed="false">De dos</button>' : ''}
         <button data-view="pov" aria-pressed="false">À ta place</button>
       </div>
       <div class="tech-stage"><svg viewBox="0 0 240 190" id="tech-svg" role="img" aria-label="Animation de l'exercice"></svg></div>
