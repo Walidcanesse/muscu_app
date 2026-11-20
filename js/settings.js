@@ -46,6 +46,8 @@ export function openSettings() {
           <div><label class="label" for="g-p">Protéines min. (g)</label><input class="input num" id="g-p" inputmode="numeric" value="${g.p}" style="width:100%;font-size:20px"></div>
           <div><label class="label" for="g-c">Glucides (g)</label><input class="input num" id="g-c" inputmode="numeric" value="${g.c}" style="width:100%;font-size:20px"></div>
           <div><label class="label" for="g-f">Lipides min. (g)</label><input class="input num" id="g-f" inputmode="numeric" value="${g.f}" style="width:100%;font-size:20px"></div>
+          <div><label class="label" for="g-fib">Fibres min. (g)</label><input class="input num" id="g-fib" inputmode="numeric" value="${g.fib ?? 30}" style="width:100%;font-size:20px"></div>
+          <div><label class="label" for="g-sug">Sucres max. (g)</label><input class="input num" id="g-sug" inputmode="numeric" value="${g.sug ?? 50}" style="width:100%;font-size:20px"></div>
         </div>
         <p class="hint" id="g-check"></p>
       </div>
@@ -64,7 +66,7 @@ export function openSettings() {
         <button class="btn ghost" data-import>${icons.upload}Importer</button>
       </div>
       <input type="file" id="imp" accept="application/json,.json" hidden>
-      <p class="hint" style="text-align:center;margin-top:26px">Sport & Nutrition, version 1.6</p>`,
+      <p class="hint" style="text-align:center;margin-top:26px">Sport & Nutrition, version 1.8</p>`,
     onMount(s) {
       const $ = (q) => s.body.querySelector(q);
       const box = $('#ex-list');
@@ -95,9 +97,11 @@ export function openSettings() {
         $('#plan').innerHTML = `
           <div class="plan-kcal"><span class="num">${fmt(r.kcal)}</span> kcal par jour</div>
           <div class="plan-macros">
-            <div><i style="background:var(--red)"></i>Protéines<b>${r.p} g</b><small>minimum</small></div>
-            <div><i style="background:var(--yellow)"></i>Lipides<b>${r.f} g</b><small>minimum</small></div>
-            <div><i style="background:var(--blue)"></i>Glucides<b>${r.c} g</b><small>le reste</small></div>
+            <div><i style="background:var(--prot)"></i>Protéines<b>${r.p} g</b><small>minimum</small></div>
+            <div><i style="background:var(--fat)"></i>Lipides<b>${r.f} g</b><small>minimum</small></div>
+            <div><i style="background:var(--carb)"></i>Glucides<b>${r.c} g</b><small>le reste</small></div>
+            <div><i style="background:var(--fib)"></i>Fibres<b>${Math.max(30, Math.round((r.kcal / 1000) * 14))} g</b><small>minimum</small></div>
+            <div><i style="background:var(--sug)"></i>Sucres<b>${Math.round((r.kcal * 0.1) / 4)} g</b><small>maximum</small></div>
           </div>
           <p class="hint">Calculé pour ${fmt(r.w, 1)} kg (${src}), ${t.height} cm et ${t.age} ans. Maintien estimé : ${fmt(r.tdee)} kcal${mode === 'cut' ? `, moins ${r.deficit} kcal pour perdre environ 0,5 % de ton poids par semaine` : ''}.${r.floored ? ' Les calories sont bloquées à ton métabolisme de base, à ne pas descendre en dessous.' : ''} Les objectifs se mettent à jour à chaque pesée.</p>`;
       };
@@ -129,6 +133,8 @@ export function openSettings() {
             p: Math.round(parseNum($('#g-p').value) || g.p),
             c: Math.round(parseNum($('#g-c').value) || g.c),
             f: Math.round(parseNum($('#g-f').value) || g.f),
+            fib: Math.round(parseNum($('#g-fib').value) || g.fib || 30),
+            sug: Math.round(parseNum($('#g-sug').value) || g.sug || 50),
           };
           update((st) => {
             st.goals = goals;

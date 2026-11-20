@@ -5,7 +5,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().to
 
 const DEFAULT = () => ({
   v: 1,
-  goals: { kcal: 2000, p: 140, f: 60, c: 225 },   // objectifs du mode Manuel
+  goals: { kcal: 2000, p: 140, f: 60, c: 225, fib: 30, sug: 50 },   // objectifs du mode Manuel
   profile: { height: 179, age: 24, sex: 'm', activity: 'mod', weight: 68.5 },
   plan: { mode: 'cut', adjust: 0 },                // cut = sèche, maint = maintien, manual
   workout: [
@@ -34,6 +34,7 @@ const DEFAULT = () => ({
   foods: [],            // aliments créés par l'utilisateur
   meals: [],            // repas types
   weights: {},          // { 'AAAA-MM-JJ': kg }
+  steps: {},            // { 'AAAA-MM-JJ': nombre de pas }
 });
 
 function load() {
@@ -101,8 +102,10 @@ export function dayTotals(k) {
     t.p += e.per100.p * r;
     t.c += e.per100.c * r;
     t.f += e.per100.f * r;
+    t.fib += (e.per100.fib || 0) * r;
+    t.sug += (e.per100.sug || 0) * r;
     return t;
-  }, { kcal: 0, p: 0, c: 0, f: 0 });
+  }, { kcal: 0, p: 0, c: 0, f: 0, fib: 0, sug: 0 });
 }
 
 export function weightAvg(endKey, days = 7) {
@@ -161,8 +164,50 @@ export function computePlan(mode = state.plan.mode, profile = state.profile, adj
   return { kcal, p, f, c, w, src, bmr: Math.round(bmr), tdee: Math.round(tdee), deficit, floored };
 }
 
+/** Fibres : au moins 30 g (14 g pour 1 000 kcal). Sucres : au plus 10 % des calories. */
+function withExtras(g) {
+  return { ...g, fib: g.fib ?? Math.max(30, Math.round((g.kcal / 1000) * 14)), sug: g.sug ?? Math.round((g.kcal * 0.1) / 4) };
+}
+
 export function getGoals() {
-  return state.plan.mode === 'manual' ? state.goals : computePlan();
+  return withExtras(state.plan.mode === 'manual' ? state.goals : computePlan());
+}
+
+/* ---------- Calories dépensées ---------- */
+export const ABS_MET = 2.8;      // MET nets (au-dessus du repos)
+const LIFT_MET = 4;               // musculation, temps de repos compris
+const CARDIO_MET = 8.5;           // fractionné 30 s à 15 km/h, 30 s à 6 km/h
+const KCAL_PER_STEP_KG = 0.0005;  // ≈ 0,034 kcal par pas à 68 kg
+
+export function absCircuitSec(a = state.abs) {
+  const n = a.exercises.length;
+  if (!n) return 0;
+  return (a.exercises.reduce((t, e) => t + e.sec, 0) + a.rest * (n - 1)) * a.rounds + a.roundRest * (a.rounds - 1);
+}
+
+/** Estimation de la dépense du jour : repos + pas + séance + cardio + abdos. */
+export function dayExpenditure(k) {
+  const { w } = currentWeight();
+  const p = state.profile;
+  const bmr = 10 * w + 6.25 * p.height - 5 * p.age + (p.sex === 'f' ? -161 : 5);
+  const rest = bmr * 1.1; // métabolisme de base + digestion
+  const steps = state.steps[k] ?? null;
+  const walk = (steps || 0) * w * KCAL_PER_STEP_KG;
+  let liftMin = 0, cardioMin = 0, sets = 0, reps = 0;
+  state.sessions.filter((s) => dayKey(new Date(s.date)) === k).forEach((s) => {
+    s.entries.forEach((e) => e.sets.forEach((x) => {
+      sets++; reps += x.reps || 0;
+      liftMin += ((x.reps || 0) * 4 + 75) / 60; // ~4 s par répétition + ~75 s de récupération
+    }));
+    cardioMin += s.cardio || 0;
+  });
+  const absN = state.absLog.filter((iso) => dayKey(new Date(iso)) === k).length;
+  const absMin = (absN * absCircuitSec()) / 60;
+  const lift = (LIFT_MET * w * liftMin) / 60;
+  const cardio = (CARDIO_MET * w * cardioMin) / 60;
+  const abs = (ABS_MET * w * absMin) / 60;
+  const total = rest + walk + lift + cardio + abs;
+  return { rest, walk, lift, cardio, abs, total, steps, sets, reps, liftMin, cardioMin, absN };
 }
 
 export const MODE_LABEL = { cut: 'Sèche', maint: 'Maintien', manual: 'Manuel' };

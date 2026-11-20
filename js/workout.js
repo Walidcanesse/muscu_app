@@ -1,4 +1,4 @@
-import { state, update, lastSessionFor, uid } from './store.js';
+import { state, update, lastSessionFor, uid, dayKey, addDays, fromKey } from './store.js';
 import { icons, esc, fmt, fmtKg, parseNum, relDay, longDate, openSheet, toast, haptic, shortDate, cap } from './ui.js';
 import { lineChart } from './charts.js';
 import { openTechnique, techniqueKey } from './technique.js';
@@ -25,8 +25,24 @@ export function setsSummary(ex, sets) {
   return groups.map((g) => `${loadText(ex, g.kg)} × ${g.reps.join(', ')}`).join(' puis ');
 }
 
+let pendingDay = null; // jour choisi avant d'avoir commencé à noter
+
+/** Prépare une séance pour un autre jour (depuis le calendrier). */
+export function setWorkoutDay(k) {
+  if (state.draft) update((st) => { st.draft.day = k; }, { silent: true });
+  else pendingDay = k;
+}
+const workoutDay = () => state.draft?.day || pendingDay || dayKey();
+
+function dayName(k) {
+  const t = dayKey();
+  if (k === t) return "Aujourd'hui";
+  if (k === addDays(t, -1)) return 'Hier';
+  return longDate(fromKey(k));
+}
+
 function ensureDraft(st) {
-  if (!st.draft) st.draft = { started: new Date().toISOString(), entries: {}, cardio: { min: 10, done: false }, open: st.workout[0]?.id ?? null };
+  if (!st.draft) { st.draft = { started: new Date().toISOString(), day: pendingDay || dayKey(), entries: {}, cardio: { min: 10, done: false }, open: st.workout[0]?.id ?? null }; pendingDay = null; }
   st.workout.forEach((ex) => {
     if (!st.draft.entries[ex.id]) st.draft.entries[ex.id] = Array.from({ length: ex.sets }, () => ({ kg: null, reps: null, done: false }));
   });
@@ -137,7 +153,7 @@ export function renderWorkout(root) {
   const cardio = d?.cardio || { min: 10, done: false };
   root.innerHTML = `
     <header class="head">
-      <div><h1>Séance</h1><div class="sub">${d ? `Commencée à ${started.getHours()} h ${String(started.getMinutes()).padStart(2, '0')}` : 'Note tes séries au fur et à mesure'}</div></div>
+      <div><h1>Séance</h1><button class="date-chip ${workoutDay() !== dayKey() ? 'past' : ''}" data-pick-day aria-label="Changer le jour de la séance">${icons.today}<span>${dayName(workoutDay())}</span>${icons.chev}</button></div>
       ${d ? `<button class="icon-btn" data-act="cancel" aria-label="Abandonner la séance">${icons.trash}</button>` : ''}
     </header>
 
@@ -168,6 +184,7 @@ export function renderWorkout(root) {
       update((st) => { ensureDraft(st).open = willOpen ? id : null; }, { silent: true });
       return;
     }
+    if (t.closest('[data-pick-day]')) return openDayPicker(root);
     const tb = t.closest('[data-tech]');
     if (tb) { openTechnique(tb.dataset.tech); return; }
     const chk = t.closest('[data-check]');
@@ -285,10 +302,13 @@ function finish() {
     sets: (d.entries[ex.id] || []).filter((s) => s.reps).map((s) => ({ kg: s.kg || 0, reps: s.reps })),
   })).filter((e) => e.sets.length);
   update((st) => {
-    st.sessions.push({ id: uid(), date: new Date().toISOString(), entries, cardio: d.cardio.done ? d.cardio.min : null });
+    const day = d.day || dayKey();
+    const date = day === dayKey() ? new Date() : (() => { const x = fromKey(day); x.setHours(18, 0, 0, 0); return x; })();
+    st.sessions.push({ id: uid(), date: date.toISOString(), entries, cardio: d.cardio.done ? d.cardio.min : null });
+    st.sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
     st.draft = null;
   });
-  toast('Séance enregistrée');
+  toast(d.day && d.day !== dayKey() ? `Séance enregistrée (${dayName(d.day).toLowerCase()})` : 'Séance enregistrée');
   document.getElementById('view').scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -323,6 +343,30 @@ function openSessionSheet(id) {
         sh.close();
         toast('Séance supprimée');
       };
+    },
+  });
+}
+
+function openDayPicker(root) {
+  const t = dayKey();
+  const cur = workoutDay();
+  const opts = [t, addDays(t, -1), addDays(t, -2), addDays(t, -3)];
+  openSheet({
+    title: 'Jour de la séance',
+    body: `
+      <div class="group">${opts.map((k) => `<button class="row" data-d="${k}" ${k === cur ? 'aria-current="date"' : ''}><div class="r-main"><div class="r-title">${dayName(k)}</div>${k === t || k === addDays(t, -1) ? `<div class="r-sub">${longDate(fromKey(k))}</div>` : ''}</div>${k === cur ? `<span class="tick">${icons.check}</span>` : ''}</button>`).join('')}</div>
+      <label class="label" for="d-in" style="margin-top:20px">Autre jour</label>
+      <div class="date-field"><input id="d-in" type="date" max="${t}" value="${cur}">${icons.today}</div>
+      <p class="hint">La séance sera enregistrée à ce jour-là : elle apparaîtra dans le calendrier et dans tes calories dépensées.</p>`,
+    onMount(s) {
+      const choose = (k) => {
+        if (!k || k > t) return;
+        setWorkoutDay(k);
+        s.close();
+        renderWorkout(root);
+      };
+      s.body.addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (b) choose(b.dataset.d); });
+      s.body.querySelector('#d-in').addEventListener('change', (e) => choose(e.target.value));
     },
   });
 }

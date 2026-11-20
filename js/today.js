@@ -3,6 +3,7 @@ import { icons, esc, fmt, fmtKg, parseNum, longDate, relDay, countUp, openSheet,
 import { sparkline } from './charts.js';
 import { openSettings } from './settings.js';
 import { absTotalSec } from './abs.js';
+import { energyCard, openSteps, openTracking } from './energy.js';
 
 /** Carte « carburant » : anneau des calories et macros du jour (réutilisée dans Nutrition). */
 const RING_R = 52, RING_W = 10, RING_C = 2 * Math.PI * RING_R;
@@ -15,9 +16,9 @@ export function fuelCard(k) {
   const was = shown[k] || {};
   const left = Math.round(g.kcal - t.kcal);
   const segs = [
-    ['var(--red)', t.p * 4],
-    ['var(--blue)', t.c * 4],
-    ['var(--yellow)', t.f * 9],
+    ['var(--prot)', t.p * 4],
+    ['var(--carb)', t.c * 4],
+    ['var(--fat)', t.f * 9],
   ];
   const eaten = segs.reduce((a, [, v]) => a + v, 0);
   const total = Math.max(g.kcal, eaten, 1);
@@ -36,9 +37,9 @@ export function fuelCard(k) {
       data-off="${off}" style="stroke-dashoffset:${was['o' + i] ?? off};transition-delay:${was['a' + i] ? 0 : i * 120}ms"/>`;
   }).join('');
   const counter = (key, val) => `data-key="${key}" data-count="${val}" data-v="${was[key] ?? 0}">${fmt(was[key] ?? 0)}`;
-  const macro = (key, name, color, val, goal) => `
-    <div class="macro">
-      <div class="m-top"><span class="m-name">${name}</span><span class="m-val"><b ${counter(key, Math.round(val))}</b> / ${fmt(goal)} g</span></div>
+  const macro = (key, name, color, val, goal, max = false) => `
+    <div class="macro ${max && val > goal ? 'over' : ''}">
+      <div class="m-top"><span class="m-name">${name}</span><span class="m-val"><b ${counter(key, Math.round(val))}</b> / ${fmt(goal)} g${max ? ' max' : ''}</span></div>
       <div class="bar"><i data-key="w${key}" data-w="${Math.min(100, (val / goal) * 100).toFixed(1)}" style="background:${color};width:${was['w' + key] ?? 0}%"></i></div>
     </div>`;
   return `
@@ -52,10 +53,14 @@ export function fuelCard(k) {
         <div class="ring-label"><span class="fuel-big num" ${counter('kcal', Math.round(t.kcal))}</span><span class="fuel-of">sur ${fmt(g.kcal)}</span></div>
       </div>
       <div class="macros">
-        ${macro('p', 'Protéines', 'var(--red)', t.p, g.p)}
-        ${macro('c', 'Glucides', 'var(--blue)', t.c, g.c)}
-        ${macro('f', 'Lipides', 'var(--yellow)', t.f, g.f)}
+        ${macro('p', 'Protéines', 'var(--prot)', t.p, g.p)}
+        ${macro('c', 'Glucides', 'var(--carb)', t.c, g.c)}
+        ${macro('f', 'Lipides', 'var(--fat)', t.f, g.f)}
       </div>
+    </div>
+    <div class="fuel-extra">
+      ${macro('fi', 'Fibres', 'var(--fib)', t.fib, g.fib)}
+      ${macro('su', 'Sucres', 'var(--sug)', t.sug, g.sug, true)}
     </div>
     <div class="fuel-foot">
       <div class="fuel-left ${left < 0 ? 'over' : ''}">${left >= 0
@@ -149,16 +154,17 @@ export function renderToday(root) {
 
     <div class="quick">
       <button data-act="go-workout">
-        <span class="q-ico green">${icons.dumbbell}</span>
-        <span><span class="q-title">${state.draft ? 'Reprendre la séance' : 'Séance'}</span>
-        <span class="q-sub" style="display:block">${state.draft ? 'En cours' : last ? `Dernière : ${relDay(new Date(last.date))}` : 'Pas encore commencée'}</span></span>
+        <span class="q-title"><span class="q-ico green">${icons.dumbbell}</span>${state.draft ? 'Reprendre la séance' : 'Séance'}</span>
+        <span class="q-sub">${state.draft ? 'En cours' : last ? `Faite ${relDay(new Date(last.date))}` : 'Pas encore faite'}</span>
       </button>
       <button data-act="go-abs">
-        <span class="q-ico red">${icons.timer}</span>
-        <span><span class="q-title">Circuit abdos</span>
-        <span class="q-sub" style="display:block">${lastAbs ? `Fait ${relDay(new Date(lastAbs))}` : durLabel(absTotalSec(a))}</span></span>
+        <span class="q-title"><span class="q-ico red">${icons.timer}</span>Circuit abdos</span>
+        <span class="q-sub">${lastAbs ? `Fait ${relDay(new Date(lastAbs))}` : `${durLabel(absTotalSec(a))} au total`}</span>
       </button>
     </div>
+
+    <h2 class="section">Bilan du jour <button class="link" data-track>Suivi</button></h2>
+    ${energyCard()}
 
     <h2 class="section">Poids <button class="link" data-act="weigh">Ajouter</button></h2>
     ${weightBlock()}
@@ -167,6 +173,9 @@ export function renderToday(root) {
 
   root.onclick = (e) => {
     if (e.target.closest('[data-open-goals]')) return openSettings();
+    const st = e.target.closest('[data-steps]');
+    if (st) return openSteps(st.dataset.steps);
+    if (e.target.closest('[data-track]')) return openTracking();
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const act = b.dataset.act;

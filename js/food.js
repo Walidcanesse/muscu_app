@@ -27,6 +27,8 @@ function toProduct(p) {
       p: Number(n.proteins_100g) || 0,
       c: Number(n.carbohydrates_100g) || 0,
       f: Number(n.fat_100g) || 0,
+      fib: Number(n.fiber_100g) || 0,
+      sug: Number(n.sugars_100g) || 0,
     },
     complete: kcal != null,
   };
@@ -78,7 +80,7 @@ function entryRow(e) {
     ${thumb(e)}
     <div class="r-main">
       <div class="r-title">${esc(e.name)}</div>
-      <div class="mini-macros"><span class="p">P <b>${fmt(e.per100.p * r)}</b></span><span class="c">G <b>${fmt(e.per100.c * r)}</b></span><span class="f">L <b>${fmt(e.per100.f * r)}</b></span></div>
+      <div class="mini-macros"><span class="p">P <b>${fmt(e.per100.p * r)}</b></span><span class="c">G <b>${fmt(e.per100.c * r)}</b></span><span class="f">L <b>${fmt(e.per100.f * r)}</b></span>${e.per100.fib ? `<span class="fi">Fi <b>${fmt(e.per100.fib * r)}</b></span>` : ''}${e.per100.sug ? `<span class="su">S <b>${fmt(e.per100.sug * r)}</b></span>` : ''}</div>
     </div>
     <div class="r-end"><span class="num">${fmt(e.per100.kcal * r)}</span><small>${e.manual ? '1 portion' : `${fmt(e.grams)} g`}</small></div>
   </button>`;
@@ -220,7 +222,8 @@ function openProduct(p, { edit = false, grams, cta, onConfirm } = {}) {
         ${chips.map((c) => `<button data-g="${c}">${c} g</button>`).join('')}
       </div>
       <div class="calc" id="calc"></div>
-      <p class="hint" style="margin-top:-8px">Pour 100 g : ${fmt(p.per100.kcal)} kcal, ${fmt(p.per100.p, 1)} g de protéines, ${fmt(p.per100.c, 1)} g de glucides, ${fmt(p.per100.f, 1)} g de lipides.</p>
+      <div class="calc-extra" id="calc-extra"></div>
+      <p class="per100">Pour 100 g : ${fmt(p.per100.kcal)} kcal, ${fmt(p.per100.p, 1)} g de protéines, ${fmt(p.per100.c, 1)} g de glucides, ${fmt(p.per100.f, 1)} g de lipides, ${fmt(p.per100.fib || 0, 1)} g de fibres, ${fmt(p.per100.sug || 0, 1)} g de sucres.</p>
       <div class="sheet-actions">
         <button class="btn block" data-save>${cta || (edit ? 'Enregistrer' : 'Ajouter au journal')}</button>
         ${edit ? `<button class="btn block danger" data-del>Retirer du journal</button>` : ''}
@@ -235,7 +238,9 @@ function openProduct(p, { edit = false, grams, cta, onConfirm } = {}) {
           <div class="p"><span class="num">${fmt(p.per100.p * r)}</span><small>prot.</small></div>
           <div class="c"><span class="num">${fmt(p.per100.c * r)}</span><small>gluc.</small></div>
           <div class="f"><span class="num">${fmt(p.per100.f * r)}</span><small>lip.</small></div>`;
+        extra.innerHTML = `<span class="fi">Fibres<b>${fmt((p.per100.fib || 0) * r, 1)} g</b></span><span class="su">Sucres<b>${fmt((p.per100.sug || 0) * r, 1)} g</b></span>`;
       };
+      const extra = s.body.querySelector('#calc-extra');
       draw();
       input.addEventListener('input', draw);
       input.addEventListener('focus', () => input.select());
@@ -276,6 +281,7 @@ function openManual(prefill = {}) {
       <div class="grid-2">
         ${numField('m-kcal', 'Calories (kcal)', v.kcal)}${numField('m-p', 'Protéines (g)', v.p)}
         ${numField('m-c', 'Glucides (g)', v.c)}${numField('m-f', 'Lipides (g)', v.f)}
+        ${numField('m-fib', 'Fibres (g)', v.fib)}${numField('m-sug', 'Sucres (g)', v.sug)}
       </div>
       <p class="hint">Valeurs pour la portion entière que tu as mangée.</p>
       <div class="sheet-actions"><button class="btn block" data-save>Ajouter au journal</button></div>`,
@@ -287,7 +293,7 @@ function openManual(prefill = {}) {
         const kcal = parseNum($('#m-kcal').value);
         if (!name) { $('#m-name').focus(); return; }
         if (kcal == null) { $('#m-kcal').focus(); return; }
-        const p = { name, brand: '', manual: true, code: null, per100: { kcal, p: parseNum($('#m-p').value) || 0, c: parseNum($('#m-c').value) || 0, f: parseNum($('#m-f').value) || 0 } };
+        const p = { name, brand: '', manual: true, code: null, per100: { kcal, p: parseNum($('#m-p').value) || 0, c: parseNum($('#m-c').value) || 0, f: parseNum($('#m-f').value) || 0, fib: parseNum($('#m-fib').value) || 0, sug: parseNum($('#m-sug').value) || 0 } };
         addEntry(p, 100);
         s.close();
         toast('Ajouté au journal');
@@ -312,8 +318,8 @@ function openMyFoods() {
           ? `<div class="group">${state.foods.map((f) => `
             <div class="row food-row">
               ${thumb(f)}
-              <button class="r-main" data-use="${f.id}" style="text-align:left"><div class="r-title">${esc(f.name)}</div><div class="r-sub">${fmt(f.per100.kcal)} kcal, ${fmt(f.per100.p, 1)} g prot. pour 100 g${f.code ? ', code-barres enregistré' : ''}</div></button>
-              <button class="icon-btn" data-edit="${f.id}" aria-label="Modifier" style="width:36px;height:36px">${icons.pencil}</button>
+              <button class="r-main r-act" data-use="${f.id}"><div class="r-title">${esc(f.name)}</div><div class="r-sub">${fmt(f.per100.kcal)} kcal et ${fmt(f.per100.p, 1)} g de protéines pour 100 g</div></button>
+              <button class="mini-btn" data-edit="${f.id}" aria-label="Modifier ${esc(f.name)}">${icons.pencil}</button>
             </div>`).join('')}</div>`
           : `<div class="empty"><b>Aucun aliment perso</b>Crée les aliments que tu ne trouves pas : ils apparaîtront dans la recherche et dans tes repas types.</div>`;
       };
@@ -342,6 +348,7 @@ function openFoodForm(food = null, { code = null, after } = {}) {
       <div class="grid-2" style="margin-top:-8px">
         ${numField('f-kcal', 'Calories (kcal)', v.kcal)}${numField('f-p', 'Protéines (g)', v.p)}
         ${numField('f-c', 'Glucides (g)', v.c)}${numField('f-f', 'Lipides (g)', v.f)}
+        ${numField('f-fib', 'Fibres (g)', v.fib)}${numField('f-sug', 'dont sucres (g)', v.sug)}
       </div>
       <div class="grid-2">${numField('f-serv', 'Portion habituelle (g)', food?.serving)}<div></div></div>
       ${(code || food?.code) ? `<p class="hint">Code-barres ${esc(code || food.code)} : l'aliment sera reconnu au prochain scan.</p>` : ''}
@@ -367,7 +374,7 @@ function openFoodForm(food = null, { code = null, after } = {}) {
           id: food?.id || uid(),
           name, brand: $('#f-brand').value.trim(), img: '', code: code || food?.code || null,
           serving: parseNum($('#f-serv').value) || null,
-          per100: { kcal, p: parseNum($('#f-p').value) || 0, c: parseNum($('#f-c').value) || 0, f: parseNum($('#f-f').value) || 0 },
+          per100: { kcal, p: parseNum($('#f-p').value) || 0, c: parseNum($('#f-c').value) || 0, f: parseNum($('#f-f').value) || 0, fib: parseNum($('#f-fib').value) || 0, sug: parseNum($('#f-sug').value) || 0 },
         };
         update((st) => {
           const i = st.foods.findIndex((x) => x.id === rec.id);
@@ -464,7 +471,8 @@ function openMealEditor(meal = null, preset = null) {
       <span class="label" style="margin-top:18px">Aliments</span>
       <div id="ml-items"></div>
       <button class="link" data-pick>+ Ajouter un aliment</button>
-      <div class="calc" id="ml-tot" style="margin-top:14px"></div>
+      <span class="label" style="margin-top:8px">Total du repas</span>
+      <div class="calc" id="ml-tot"></div>
       <div class="sheet-actions"><button class="btn block" data-save>Enregistrer le repas</button></div>`,
     onMount(s) {
       const box = s.body.querySelector('#ml-items');
@@ -479,11 +487,11 @@ function openMealEditor(meal = null, preset = null) {
       };
       const draw = () => {
         box.innerHTML = items.length ? `<div class="group">${items.map((i, k) => `
-          <div class="row" data-k="${k}">
-            <div class="r-main"><div class="r-title">${esc(i.name)}</div><div class="r-sub">${esc(i.brand || '')}</div></div>
-            ${i.manual ? '<span class="r-sub">1 portion</span>' : `<input class="input num ml-g" inputmode="decimal" value="${fmt(i.grams)}" aria-label="Grammes" style="width:72px;flex:none;text-align:center;font-size:17px;height:40px"><span class="r-sub">g</span>`}
-            <button class="icon-btn" data-rm aria-label="Retirer" style="width:36px;height:36px">${icons.trash}</button>
-          </div>`).join('')}</div>` : '<p class="hint">Aucun aliment pour l\'instant.</p>';
+          <div class="row ml-row" data-k="${k}">
+            <div class="r-main"><div class="r-title">${esc(i.name)}</div><div class="r-sub">${fmt(kcalOf(i, i.grams))} kcal${i.brand ? `, ${esc(i.brand)}` : ''}</div></div>
+            ${i.manual ? '<span class="r-sub">1 portion</span>' : `<span class="ml-g-wrap"><input class="input ml-g" inputmode="decimal" value="${fmt(i.grams)}" aria-label="Grammes de ${esc(i.name)}"><span>g</span></span>`}
+            <button class="mini-btn" data-rm aria-label="Retirer ${esc(i.name)}">${icons.trash}</button>
+          </div>`).join('')}</div>` : '<div class="group"><div class="empty" style="padding:18px">Aucun aliment pour l\'instant.</div></div>';
         drawTot();
       };
       draw();
@@ -491,7 +499,12 @@ function openMealEditor(meal = null, preset = null) {
         const r = e.target.closest('[data-k]');
         if (!r || !e.target.classList.contains('ml-g')) return;
         const v = parseNum(e.target.value);
-        if (v && v > 0) { items[Number(r.dataset.k)].grams = v; drawTot(); }
+        if (v && v > 0) {
+          const it = items[Number(r.dataset.k)];
+          it.grams = v;
+          r.querySelector('.r-sub').textContent = `${fmt(kcalOf(it, v))} kcal${it.brand ? `, ${it.brand}` : ''}`;
+          drawTot();
+        }
       });
       s.body.addEventListener('click', (e) => {
         const r = e.target.closest('[data-k]');

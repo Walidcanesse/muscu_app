@@ -5,6 +5,7 @@ import { renderWorkout } from './workout.js';
 import { renderAbs } from './abs.js';
 import { renderFood, resetFoodDay } from './food.js';
 import { renderCalendar, resetCalendar } from './calendar.js';
+import { checkStepsReturn } from './energy.js';
 
 const views = { today: renderToday, workout: renderWorkout, abs: renderAbs, food: renderFood, cal: renderCalendar };
 const root = document.getElementById('view');
@@ -12,6 +13,7 @@ const tabs = [...document.querySelectorAll('.tab')];
 let current = sessionStorage.getItem('fonte.tab') || 'today';
 if (!views[current]) current = 'today';
 let renderedDay = dayKey();
+let enterTimer = 0;
 
 hydrateIcons(document);
 
@@ -25,10 +27,13 @@ function show(name, { animate = true } = {}) {
   if (changed) root.scrollTop = 0;
   root.classList.toggle('has-fab', name === 'food');
   views[name](root);
+  clearTimeout(enterTimer);
+  root.classList.remove('enter');
   if (animate) {
-    root.classList.remove('enter');
     void root.offsetWidth;
     root.classList.add('enter');
+    // Le fondu ne vaut que pour l'arrivée sur l'onglet : un nouveau rendu (donnée modifiée) ne le rejoue pas
+    enterTimer = setTimeout(() => root.classList.remove('enter'), 650);
   }
 }
 
@@ -41,12 +46,15 @@ window.addEventListener('tab', (e) => show(e.detail));
 // Toute modification des données redessine l'écran courant, sans animation
 subscribe(() => {
   const top = root.scrollTop;
+  clearTimeout(enterTimer);
+  root.classList.remove('enter');
   views[current](root);
   root.scrollTop = top;
 });
 
 // Au retour dans l'appli le lendemain, on repart sur la bonne date
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkStepsReturn();
   if (document.visibilityState === 'visible' && dayKey() !== renderedDay) {
     renderedDay = dayKey();
     resetFoodDay();
@@ -56,6 +64,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 show(current);
+checkStepsReturn();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

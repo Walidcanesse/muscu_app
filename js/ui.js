@@ -132,9 +132,28 @@ export function openSheet({ title, body, onMount, onClose }) {
     close: () => close(),
   };
   let closed = false;
+  // Clavier iOS : la feuille reste au-dessus du clavier, champ de saisie visible
+  const vv = window.visualViewport;
+  const fit = () => {
+    if (!vv) return;
+    const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    wrap.style.setProperty('--kb', `${Math.round(kb)}px`);
+    wrap.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+    wrap.classList.toggle('kb-open', kb > 80);
+    if (vv.offsetTop > 0 && kb > 80) window.scrollTo(0, 0);
+  };
+  vv?.addEventListener('resize', fit);
+  vv?.addEventListener('scroll', fit);
+  fit();
+  wrap.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, textarea')) setTimeout(() => { fit(); e.target.scrollIntoView({ block: 'nearest' }); }, 320);
+  });
+
   function close() {
     if (closed) return;
     closed = true;
+    vv?.removeEventListener('resize', fit);
+    vv?.removeEventListener('scroll', fit);
     document.activeElement?.blur?.();
     wrap.classList.remove('open');
     sheet.style.transform = '';
