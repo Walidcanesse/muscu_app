@@ -524,8 +524,17 @@ function pullBackJ(t, o = {}) {
   J.shR = [135, J.sc[1]]; J.shL = [105, J.sc[1]];
   J.head = [120, J.sc[1] - 18];
   J.hipR = [128, hipY]; J.hipL = [112, hipY];
-  [J.elbR, J.wriR] = ik(J.shR, [142, 30], L.ua, L.fa, 1);
-  [J.elbL, J.wriL] = ik(J.shL, [98, 30], L.ua, L.fa, -1);
+  // Vu de dos, les coudes partent vers l'avant (en profondeur) : à l'écran ils descendent
+  // le long du buste, juste à l'extérieur, sans s'écarter sur les côtés.
+  const elbow = (sh, grip, side) => {
+    const straight = [(sh[0] + grip[0]) / 2, (sh[1] + grip[1]) / 2];
+    const tucked = [sh[0] + side * 6, sh[1] + 17];
+    const k = Math.min(1, t * 1.15);
+    return [lerp(straight[0], tucked[0], k), lerp(straight[1], tucked[1], k)];
+  };
+  J.wriR = [142, 30]; J.wriL = [98, 30];
+  J.elbR = elbow(J.shR, J.wriR, 1);
+  J.elbL = elbow(J.shL, J.wriL, -1);
   [J.kneR, J.ankR] = limbJ(J.hipR, { u: -87, f: -91 }, L.th, L.sh);
   [J.kneL, J.ankL] = limbJ(J.hipL, { u: -93, f: -89 }, L.th, L.sh);
   // omoplates : descendent et se rapprochent en haut
@@ -549,8 +558,8 @@ const BACK = {
     const scene = `${pullBar(40, 200, 24)}${drawFront(J, { hand: 'fist' }, 'back')}${grips}`;
     const bp = [120 + J.bladeX + 3, J.sc[1] + J.blade];
     return `${floor(182)}<g transform="translate(${f.x} ${f.y}) scale(${f.s})">${scene}</g>
-      ${pin(T(bp), add(T(bp), [44, 30]), 'Omoplates vers le bas', 'start')}
-      ${t >= 0.35 ? pin(T(J.elbL), add(T(J.elbL), [-26, 26]), 'Coudes vers les côtes', 'end') : ''}
+      ${t < 0.5 ? pin(T(bp), add(T(bp), [44, 30]), 'Omoplates vers le bas', 'start') : ''}
+      ${t >= 0.5 ? pin(T(J.elbL), add(T(J.elbL), [-14, 40]), 'Coudes serrés, vers les côtes', 'middle') : ''}
       ${t < 0.35 ? pin(T([142, 26]), add(T([142, 26]), [34, 16]), 'Paumes vers toi', 'start') : ''}`;
   },
   dc(t) {
