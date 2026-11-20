@@ -19,6 +19,8 @@ function show(name, { animate = true } = {}) {
   current = name;
   sessionStorage.setItem('fonte.tab', name);
   tabs.forEach((t) => t.setAttribute('aria-current', t.dataset.tab === name ? 'page' : 'false'));
+  const i = tabs.findIndex((t) => t.dataset.tab === name);
+  document.querySelector('.tab-ind').style.transform = `translateX(calc(${i} * (100% + 12px)))`;
   if (changed) root.scrollTop = 0;
   root.classList.toggle('has-fab', name === 'food');
   views[name](root);

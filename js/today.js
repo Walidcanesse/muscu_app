@@ -18,9 +18,9 @@ export function fuelCard(k) {
   const total = Math.max(g.kcal, eaten);
   const macro = (key, name, color, val, goal) => `
     <div class="macro">
-      <div class="m-name"><i style="background:${color}"></i>${name}</div>
+      <div class="m-name"><i style="background:${color};color:${color}"></i>${name}</div>
       <div class="m-val"><span data-count="${val.toFixed(0)}">0</span><small> / ${fmt(goal)} g</small></div>
-      <div class="bar"><i data-w="${Math.min(100, (val / goal) * 100).toFixed(1)}" style="background:${color}"></i></div>
+      <div class="bar"><i data-w="${Math.min(100, (val / goal) * 100).toFixed(1)}" style="background:${color};color:${color}"></i></div>
     </div>`;
   return `
   <section class="fuel">
@@ -32,7 +32,7 @@ export function fuelCard(k) {
       ? `Il te reste <b>${fmt(left)} kcal</b>`
       : `<b>${fmt(-left)} kcal</b> au-dessus de ton objectif`}</div>
     <div class="stack" aria-hidden="true">
-      ${segs.map(([c, v]) => `<span data-grow="${(v / total).toFixed(4)}" style="background:${c};flex-grow:0"></span>`).join('')}
+      ${segs.map(([c, v]) => `<span data-grow="${(v / total).toFixed(4)}" style="background:${c};color:${c};flex-grow:0"></span>`).join('')}
       <span class="rest" data-grow="${Math.max(0, (total - eaten) / total).toFixed(4)}" style="flex-grow:1"></span>
     </div>
     <div class="macros">
@@ -104,12 +104,12 @@ export function renderToday(root) {
 
     <div class="quick">
       <button data-act="go-workout">
-        <span class="q-ico" style="background:rgba(52,194,122,.14);color:var(--green)">${icons.dumbbell}</span>
+        <span class="q-ico" style="background:rgba(43,245,160,.12);color:var(--green)">${icons.dumbbell}</span>
         <span><span class="q-title">${state.draft ? 'Reprendre la séance' : 'Séance'}</span>
         <span class="q-sub" style="display:block">${state.draft ? 'En cours' : last ? `Dernière : ${relDay(new Date(last.date))}` : 'Pas encore commencée'}</span></span>
       </button>
       <button data-act="go-abs">
-        <span class="q-ico" style="background:rgba(229,72,77,.14);color:var(--red)">${icons.timer}</span>
+        <span class="q-ico" style="background:rgba(255,55,95,.12);color:var(--red)">${icons.timer}</span>
         <span><span class="q-title">Circuit abdos</span>
         <span class="q-sub" style="display:block">${lastAbs ? `Fait ${relDay(new Date(lastAbs))}` : durLabel(absTotalSec(a))}</span></span>
       </button>

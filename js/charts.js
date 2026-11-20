@@ -49,7 +49,7 @@ export function lineChart(values, { color = 'var(--green)', w = 320, h = 150, la
     <text x="0" y="${pad.t - 6}" fill="var(--chalk-3)" font-size="11" text-anchor="start" font-family="-apple-system, system-ui">max ${fmt(max, decimals)}</text>
     ${area ? `<path d="${area}" fill="url(#${gid})"/>` : ''}
     ${n > 1 ? `<path class="path" d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" style="--len:${len}" vector-effect="non-scaling-stroke"/>` : ''}
-    ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === n - 1 ? 4.5 : 2.5}" fill="${i === n - 1 ? color : 'var(--iron-2)'}" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}
+    ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === n - 1 ? 4.5 : 2.5}" fill="${i === n - 1 ? color : '#000'}" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}
     ${lab(0, 'start')}${n > 1 ? lab(n - 1, 'end') : ''}
   </svg>`;
 }

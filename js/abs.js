@@ -199,6 +199,7 @@ function startTimer() {
   const el = document.createElement('div');
   el.className = 'timer prep';
   el.innerHTML = `
+    <div class="t-bg" aria-hidden="true"><i class="gp"></i><i class="gw"></i><i class="gr"></i><i class="gd"></i></div>
     <div class="t-top">
       <span class="t-round"></span>
       <button class="t-close" data-t="close" aria-label="Arrêter">${icons.close}</button>
@@ -278,7 +279,7 @@ function startTimer() {
     $('.t-count').innerHTML = `<span style="width:38%;display:block">${icons.check}</span>`;
     ring.style.strokeDashoffset = 0;
     $('.t-next').textContent = 'Bien joué.';
-    $('.t-controls').innerHTML = `<button class="btn" data-t="close" style="min-width:200px;background:var(--iron);color:var(--chalk)">Fermer</button>`;
+    $('.t-controls').innerHTML = `<button class="btn t-done-btn" data-t="close">Fermer</button>`;
     beep(784, 0.15); setTimeout(() => beep(1046, 0.4), 170);
     say('Circuit terminé. Bien joué.');
     update((st) => { st.absLog.push(new Date().toISOString()); if (st.absLog.length > 200) st.absLog.shift(); });
