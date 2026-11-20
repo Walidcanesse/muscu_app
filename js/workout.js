@@ -1,6 +1,7 @@
 import { state, update, lastSessionFor, uid } from './store.js';
 import { icons, esc, fmt, fmtKg, parseNum, relDay, longDate, openSheet, toast, haptic, shortDate, cap } from './ui.js';
 import { lineChart } from './charts.js';
+import { openTechnique, techniqueKey } from './technique.js';
 
 let selectedEx = null;
 
@@ -62,6 +63,7 @@ function exCard(ex, i) {
             <button class="check ${s.done ? 'on' : ''}" data-check aria-label="Valider la série ${j + 1}" aria-pressed="${s.done}">${icons.check}</button>
           </div>`;
         }).join('')}
+        ${techniqueKey(ex.name) ? `<button class="tech-btn" data-tech="${esc(ex.name)}">${icons.play}<span>Voir la technique</span></button>` : ''}
         <div class="ex-tools">
           <button class="link" data-addset>+ Ajouter une série</button>
           ${sets.length > 1 ? `<button class="link" data-rmset>Retirer</button>` : ''}
@@ -166,6 +168,8 @@ export function renderWorkout(root) {
       update((st) => { ensureDraft(st).open = willOpen ? id : null; }, { silent: true });
       return;
     }
+    const tb = t.closest('[data-tech]');
+    if (tb) { openTechnique(tb.dataset.tech); return; }
     const chk = t.closest('[data-check]');
     if (chk && card) return toggleSet(root, card, chk);
     if (t.closest('[data-addset]') && card) {

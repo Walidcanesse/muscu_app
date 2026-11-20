@@ -1,5 +1,6 @@
 import { state, update, uid } from './store.js';
 import { icons, esc, durLabel, mmss, parseNum, openSheet, toast, haptic } from './ui.js';
+import { openTechnique, techniqueKey } from './technique.js';
 
 const PREP = 5;
 
@@ -15,7 +16,8 @@ export function renderAbs(root) {
   const n = a.exercises.length;
   const steps = [];
   a.exercises.forEach((e, i) => {
-    steps.push(`<li><span class="c-n">${i + 1}</span><span class="c-name">${esc(e.name)}</span><span class="c-t">${e.sec} s</span></li>`);
+    const tech = techniqueKey(e.name);
+    steps.push(`<li${tech ? ` class="has-tech" data-tech="${esc(e.name)}" role="button" tabindex="0" aria-label="Technique : ${esc(e.name)}"` : ''}><span class="c-n">${i + 1}</span><span class="c-name">${esc(e.name)}${tech ? '<small>Voir la technique</small>' : ''}</span><span class="c-t">${e.sec} s</span></li>`);
     if (i < n - 1) steps.push(`<li class="rest"><span class="c-n" aria-hidden="true">·</span><span class="c-name">Repos</span><span class="c-t">${a.rest} s</span></li>`);
   });
   if (a.rounds > 1) steps.push(`<li class="rest"><span class="c-n" aria-hidden="true">↻</span><span class="c-name">Pause, puis tour suivant</span><span class="c-t">${durLabel(a.roundRest)}</span></li>`);
@@ -50,6 +52,8 @@ export function renderAbs(root) {
   `;
 
   root.onclick = (e) => {
+    const tl = e.target.closest('[data-tech]');
+    if (tl) { openTechnique(tl.dataset.tech); return; }
     const st = e.target.closest('[data-step]');
     if (st) {
       const [key, dir] = st.dataset.step.split(':');

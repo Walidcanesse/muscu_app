@@ -1,8 +1,8 @@
 // Sport & Nutrition — fonctionne hors ligne. Changer VERSION à chaque mise à jour.
-const VERSION = 'fonte-v1.4.0';
+const VERSION = 'fonte-v1.5.0';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/app.js', 'js/store.js', 'js/ui.js', 'js/charts.js', 'js/today.js', 'js/workout.js', 'js/abs.js', 'js/food.js', 'js/settings.js',
+  'js/app.js', 'js/store.js', 'js/ui.js', 'js/charts.js', 'js/today.js', 'js/workout.js', 'js/abs.js', 'js/food.js', 'js/settings.js', 'js/technique.js',
   'vendor/zxing.min.js',
   'fonts/nunito-latin-600-normal.woff2', 'fonts/nunito-latin-700-normal.woff2', 'fonts/nunito-latin-800-normal.woff2',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png',
