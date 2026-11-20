@@ -1,4 +1,4 @@
-import { state, update, dayKey, addDays, dayTotals, weightAvg, fromKey } from './store.js';
+import { state, update, dayKey, addDays, dayTotals, weightAvg, fromKey, getGoals, MODE_LABEL } from './store.js';
 import { icons, esc, fmt, fmtKg, parseNum, longDate, relDay, countUp, openSheet, toast, haptic, durLabel } from './ui.js';
 import { sparkline } from './charts.js';
 import { openSettings } from './settings.js';
@@ -11,7 +11,7 @@ const shown = {};
 
 export function fuelCard(k) {
   const t = dayTotals(k);
-  const g = state.goals;
+  const g = getGoals();
   const was = shown[k] || {};
   const left = Math.round(g.kcal - t.kcal);
   const segs = [
@@ -57,9 +57,12 @@ export function fuelCard(k) {
         ${macro('f', 'Lipides', 'var(--yellow)', t.f, g.f)}
       </div>
     </div>
-    <div class="fuel-left ${left < 0 ? 'over' : ''}">${left >= 0
-      ? `Il te reste <b>${fmt(left)} kcal</b>`
-      : `<b>${fmt(-left)} kcal</b> au-dessus de ton objectif`}</div>
+    <div class="fuel-foot">
+      <div class="fuel-left ${left < 0 ? 'over' : ''}">${left >= 0
+        ? `Il te reste <b>${fmt(left)} kcal</b>`
+        : `<b>${fmt(-left)} kcal</b> au-dessus de ton objectif`}</div>
+      <button class="mode-tag" data-open-goals aria-label="Changer d'objectif">${MODE_LABEL[state.plan.mode]}</button>
+    </div>
   </section>`;
 }
 
@@ -99,9 +102,16 @@ function weightBlock() {
   if (thisW && prevW && thisW.n >= 3 && prevW.n >= 3) {
     const d = thisW.avg - prevW.avg;
     delta = `<div class="delta ${d <= 0 ? 'down' : 'up'}">${d > 0 ? '+' : d < 0 ? '−' : ''}${fmt(Math.abs(d), 2)} kg</div><div class="delta-label">sur 7 jours</div>`;
-    if (d < -0.7) advice = `Tu perds plus de 0,7 kg par semaine. <b>Ajoute 150 kcal</b>, en glucides, pour garder tes muscles.`;
-    else if (d <= -0.2) advice = `<b>Bon rythme.</b> Ne change rien : c'est la zone où tu perds du gras sans perdre de muscle.`;
-    else advice = `Moins de 0,2 kg perdu cette semaine. Si ça se répète la semaine prochaine, <b>enlève 150 kcal</b>, en glucides.`;
+    const where = state.plan.mode === 'manual' ? 'dans tes objectifs' : "dans Réglages, ligne Ajustement";
+    if (state.plan.mode === 'cut') {
+      if (d < -0.7) advice = `Tu perds plus de 0,7 kg par semaine. <b>Ajoute 150 kcal</b> (${where}) pour garder tes muscles.`;
+      else if (d <= -0.2) advice = `<b>Bon rythme.</b> Ne change rien : c'est la zone où tu perds du gras sans perdre de muscle.`;
+      else advice = `Moins de 0,2 kg perdu cette semaine. Si ça se répète la semaine prochaine, <b>enlève 150 kcal</b> (${where}).`;
+    } else {
+      if (d < -0.3) advice = `Tu perds du poids alors que tu es au maintien. Si ça se répète, <b>ajoute 150 kcal</b> (${where}).`;
+      else if (d > 0.3) advice = `Tu prends du poids alors que tu es au maintien. Si ça se répète, <b>enlève 150 kcal</b> (${where}).`;
+      else advice = `<b>Poids stable.</b> Tes calories correspondent bien à ton maintien.`;
+    }
   } else {
     advice = `Pèse-toi le matin à jeun, au moins 3 fois par semaine. La moyenne de chaque semaine sera comparée à la précédente.`;
   }
@@ -156,6 +166,7 @@ export function renderToday(root) {
   animateFuel(root);
 
   root.onclick = (e) => {
+    if (e.target.closest('[data-open-goals]')) return openSettings();
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const act = b.dataset.act;

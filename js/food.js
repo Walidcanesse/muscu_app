@@ -1,6 +1,7 @@
 import { state, update, dayKey, addDays, fromKey, uid } from './store.js';
 import { icons, esc, fmt, parseNum, longDate, openSheet, toast, haptic, closeAllSheets } from './ui.js';
 import { fuelCard, animateFuel } from './today.js';
+import { openSettings } from './settings.js';
 
 let currentDay = dayKey();
 let lastAddedId = null;
@@ -87,6 +88,7 @@ export function renderFood(root) {
   animateFuel(root);
 
   root.onclick = (e) => {
+    if (e.target.closest('[data-open-goals]')) return openSettings();
     const d = e.target.closest('[data-day]');
     if (d && !d.disabled) {
       const next = addDays(currentDay, Number(d.dataset.day));

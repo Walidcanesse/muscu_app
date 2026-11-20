@@ -594,3 +594,25 @@ button.row:active { background: var(--iron-3); }
   }
   .scan-win::after { animation: none; }
 }
+
+/* ---------- Objectifs automatiques ---------- */
+.seg.fill { margin: 0 0 4px; padding-inline: 0; overflow: visible; }
+.seg.fill button { flex: 1; padding: 10px 6px; text-align: center; }
+.plan-card { margin: 10px 0 4px; padding: 16px; border-radius: 18px; background: #1C1C1F; border: 1px solid rgba(255, 255, 255, 0.07); }
+.plan-kcal { color: var(--chalk-3); font-size: 15px; }
+.plan-kcal .num { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -0.03em; color: var(--chalk); margin-right: 4px; }
+.plan-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 2px; }
+.plan-macros div { font-size: 12px; color: var(--chalk-3); display: flex; flex-direction: column; gap: 1px; }
+.plan-macros i { width: 14px; height: 4px; border-radius: 2px; display: block; margin-bottom: 5px; }
+.plan-macros b { font-family: var(--display); font-size: 19px; font-weight: 800; color: var(--chalk); }
+.plan-macros small { font-size: 11px; }
+.fuel-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.fuel-foot .fuel-left { flex: 1; margin: 0; padding: 0; border: 0; }
+.mode-tag {
+  flex: none; height: 30px; padding: 0 12px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; color: var(--chalk-2);
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s var(--ease), background 0.2s;
+}
+.mode-tag:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.12); }
+[hidden] { display: none !important; }
