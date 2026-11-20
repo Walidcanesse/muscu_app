@@ -31,6 +31,8 @@ const DEFAULT = () => ({
   absLog: [],           // dates des circuits terminés
   food: {},             // { 'AAAA-MM-JJ': [entrée] }
   recents: [],          // produits récents
+  foods: [],            // aliments créés par l'utilisateur
+  meals: [],            // repas types
   weights: {},          // { 'AAAA-MM-JJ': kg }
 });
 

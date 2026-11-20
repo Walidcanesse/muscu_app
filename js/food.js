@@ -6,6 +6,9 @@ import { openSettings } from './settings.js';
 let currentDay = dayKey();
 let lastAddedId = null;
 
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+const kcalOf = (p, g) => (p.per100.kcal * g) / 100;
+
 /* ---------- Open Food Facts ---------- */
 const FIELDS = 'code,product_name,product_name_fr,brands,nutriments,image_front_small_url,serving_quantity';
 
@@ -30,6 +33,9 @@ function toProduct(p) {
 }
 
 async function fetchProduct(code) {
+  // Tes aliments d'abord : un produit que tu as créé est reconnu au scan, même hors ligne
+  const mine = state.foods.find((f) => f.code && f.code === code);
+  if (mine) return mine;
   const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`);
   if (!r.ok && r.status !== 404) throw new Error('reseau');
   const j = await r.json();
@@ -45,6 +51,16 @@ async function searchProducts(q) {
   return (j.products || []).map(toProduct).filter((p) => p.complete);
 }
 
+/** Recherche locale : tes aliments puis tes récents. */
+function searchLocal(q) {
+  const n = norm(q);
+  const match = (p) => !n || norm(`${p.name} ${p.brand || ''}`).includes(n);
+  const mine = state.foods.filter(match).map((p) => ({ ...p, mine: true }));
+  const seen = new Set(mine.map((p) => p.id));
+  const rec = state.recents.filter((p) => !p.manual && match(p) && !(p.foodId && seen.has(p.foodId)));
+  return { mine, rec };
+}
+
 /* ---------- Vue ---------- */
 function dayLabel(k) {
   const t = dayKey();
@@ -53,11 +69,13 @@ function dayLabel(k) {
   return longDate(fromKey(k));
 }
 
+const thumb = (p) => `<span class="dot">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : icons.food}</span>`;
+
 function entryRow(e) {
   const r = e.grams / 100;
   return `
   <button class="row food-row ${e.id === lastAddedId ? 'row-enter' : ''}" data-entry="${e.id}">
-    <span class="dot">${e.img ? `<img src="${esc(e.img)}" alt="" loading="lazy">` : icons.food}</span>
+    ${thumb(e)}
     <div class="r-main">
       <div class="r-title">${esc(e.name)}</div>
       <div class="mini-macros"><span class="p">P <b>${fmt(e.per100.p * r)}</b></span><span class="c">G <b>${fmt(e.per100.c * r)}</b></span><span class="f">L <b>${fmt(e.per100.f * r)}</b></span></div>
@@ -78,10 +96,10 @@ export function renderFood(root) {
       </div>
     </header>
     ${fuelCard(currentDay)}
-    <h2 class="section">Journal <small>${list.length ? `${list.length} aliment${list.length > 1 ? 's' : ''}` : ''}</small></h2>
+    <h2 class="section">Journal ${list.length ? `<button class="link" data-save-meal>Enregistrer comme repas</button>` : ''}</h2>
     ${list.length
       ? `<div class="group">${[...list].reverse().map(entryRow).join('')}</div>`
-      : `<div class="group"><div class="empty"><b>Rien de noté ${isToday ? "aujourd'hui" : 'ce jour-là'}</b>Scanne un code-barres ou cherche un aliment avec le bouton +.</div></div>`}
+      : `<div class="group"><div class="empty"><b>Rien de noté ${isToday ? "aujourd'hui" : 'ce jour-là'}</b>Scanne un code-barres, choisis un repas type ou cherche un aliment avec le bouton +.</div></div>`}
     <button class="fab" data-act="add" aria-label="Ajouter un aliment">${icons.plus}</button>
   `;
   lastAddedId = null;
@@ -103,23 +121,58 @@ export function renderFood(root) {
       if (item) openProduct(item, { edit: true });
       return;
     }
+    if (e.target.closest('[data-save-meal]')) {
+      const items = (state.food[currentDay] || []).map(toItem);
+      return openMealEditor(null, items);
+    }
     if (e.target.closest('[data-act="add"]')) openAddSheet();
   };
 }
 
 export function resetFoodDay() { currentDay = dayKey(); }
+export function setFoodDay(k) { currentDay = k > dayKey() ? dayKey() : k; }
+
+/* ---------- Journal ---------- */
+const keyOf = (x) => x.code || x.foodId || `m:${x.name}`;
+function rememberRecent(p, grams) {
+  const rec = { code: p.code || null, foodId: p.mine ? p.id : (p.foodId || null), name: p.name, brand: p.brand || '', img: p.img || '', per100: p.per100, serving: p.serving || null, manual: !!p.manual, lastGrams: grams };
+  const key = keyOf(rec);
+  update((st) => {
+    st.recents = [rec, ...st.recents.filter((x) => keyOf(x) !== key)].slice(0, 40);
+  }, { silent: true });
+}
+
+function addEntry(p, grams, { silent = false } = {}) {
+  const id = uid();
+  lastAddedId = id;
+  rememberRecent(p, grams);
+  update((st) => {
+    (st.food[currentDay] ||= []).push({ id, code: p.code || null, name: p.name, brand: p.brand || '', img: p.img || '', per100: p.per100, grams, manual: !!p.manual, t: Date.now() });
+  }, { silent });
+}
+
+const toItem = (e) => ({ name: e.name, brand: e.brand || '', img: e.img || '', code: e.code || null, per100: { ...e.per100 }, grams: e.grams, manual: !!e.manual });
 
 /* ---------- Ajouter ---------- */
 function openAddSheet() {
-  const rec = state.recents.slice(0, 12);
+  const rec = state.recents.slice(0, 10);
+  const meals = state.meals.slice(0, 4);
   openSheet({
     title: 'Ajouter',
     body: `
       <div class="add-grid">
         <button class="scan" data-a="scan">${icons.barcode}Scanner un code-barres</button>
+        <button data-a="meals">${icons.bowl}Repas types</button>
         <button data-a="search">${icons.search}Rechercher</button>
+        <button data-a="mine">${icons.star}Mes aliments</button>
         <button data-a="manual">${icons.pen}Saisie libre</button>
       </div>
+      ${meals.length ? `<span class="label" style="margin-top:22px">Repas types</span>
+      <div class="group">${meals.map((m) => `
+        <button class="row" data-meal="${m.id}">
+          <div class="r-main"><div class="r-title">${esc(m.name)}</div><div class="r-sub">${m.items.length} aliment${m.items.length > 1 ? 's' : ''}</div></div>
+          <div class="r-end"><span class="num">${fmt(mealTotals(m).kcal)}</span><small>kcal</small></div>
+        </button>`).join('')}</div>` : ''}
       ${rec.length ? `<span class="label" style="margin-top:22px">Récents</span>
       <div class="group">${rec.map((p, i) => `
         <button class="row" data-rec="${i}">
@@ -128,49 +181,35 @@ function openAddSheet() {
         </button>`).join('')}</div>` : ''}`,
     onMount(s) {
       s.body.addEventListener('click', (e) => {
+        const go = (fn) => { s.close(); setTimeout(fn, 200); };
         const a = e.target.closest('[data-a]')?.dataset.a;
-        if (a === 'scan') { s.close(); setTimeout(openScanner, 200); }
-        if (a === 'search') { s.close(); setTimeout(openSearch, 200); }
-        if (a === 'manual') { s.close(); setTimeout(() => openManual(), 200); }
+        if (a === 'scan') go(openScanner);
+        if (a === 'search') go(() => openSearch());
+        if (a === 'manual') go(() => openManual());
+        if (a === 'meals') go(openMeals);
+        if (a === 'mine') go(openMyFoods);
+        const m = e.target.closest('[data-meal]');
+        if (m) go(() => openMeal(m.dataset.meal));
         const r = e.target.closest('[data-rec]');
         if (r) {
           const p = state.recents[Number(r.dataset.rec)];
-          s.close();
-          setTimeout(() => (p.manual ? openManual(p) : openProduct(p, { grams: p.lastGrams })), 200);
+          go(() => (p.manual ? openManual(p) : openProduct(p, { grams: p.lastGrams })));
         }
       });
     },
   });
 }
 
-function rememberRecent(p, grams) {
-  const key = p.code || `m:${p.name}`;
-  update((st) => {
-    st.recents = st.recents.filter((x) => (x.code || `m:${x.name}`) !== key);
-    st.recents.unshift({ code: p.code || null, name: p.name, brand: p.brand || '', img: p.img || '', per100: p.per100, serving: p.serving || null, manual: !!p.manual, lastGrams: grams });
-    st.recents = st.recents.slice(0, 40);
-  }, { silent: true });
-}
-
-function addEntry(p, grams) {
-  const id = uid();
-  lastAddedId = id;
-  rememberRecent(p, grams);
-  update((st) => {
-    (st.food[currentDay] ||= []).push({ id, code: p.code || null, name: p.name, brand: p.brand || '', img: p.img || '', per100: p.per100, grams, manual: !!p.manual, t: Date.now() });
-  });
-}
-
-/* ---------- Fiche produit ---------- */
-function openProduct(p, { edit = false, grams } = {}) {
-  let g = grams ?? p.grams ?? p.serving ?? 100;
+/* ---------- Fiche produit (quantité) ---------- */
+function openProduct(p, { edit = false, grams, cta, onConfirm } = {}) {
+  const g = grams ?? p.grams ?? p.serving ?? 100;
   const chips = [50, 100, 150, 200, 250];
   openSheet({
     title: edit ? 'Modifier' : 'Quantité',
     body: `
       <div class="product-head">
         <div class="ph-img">${p.img ? `<img src="${esc(p.img)}" alt="">` : icons.food}</div>
-        <div><h3>${esc(p.name)}</h3><p>${esc(p.brand || 'Sans marque')}</p></div>
+        <div><h3>${esc(p.name)}</h3><p>${esc(p.brand || (p.mine ? 'Mon aliment' : 'Sans marque'))}</p></div>
       </div>
       <div class="qty">
         <input class="field num" id="g-in" inputmode="decimal" value="${fmt(g)}" aria-label="Quantité en grammes">
@@ -183,7 +222,7 @@ function openProduct(p, { edit = false, grams } = {}) {
       <div class="calc" id="calc"></div>
       <p class="hint" style="margin-top:-8px">Pour 100 g : ${fmt(p.per100.kcal)} kcal, ${fmt(p.per100.p, 1)} g de protéines, ${fmt(p.per100.c, 1)} g de glucides, ${fmt(p.per100.f, 1)} g de lipides.</p>
       <div class="sheet-actions">
-        <button class="btn block" data-save>${edit ? 'Enregistrer' : 'Ajouter au journal'}</button>
+        <button class="btn block" data-save>${cta || (edit ? 'Enregistrer' : 'Ajouter au journal')}</button>
         ${edit ? `<button class="btn block danger" data-del>Retirer du journal</button>` : ''}
       </div>`,
     onMount(s) {
@@ -206,6 +245,8 @@ function openProduct(p, { edit = false, grams } = {}) {
         if (e.target.closest('[data-save]')) {
           const v = parseNum(input.value);
           if (!v || v <= 0) { input.focus(); return; }
+          s.close();
+          if (onConfirm) return onConfirm(p, v);
           if (edit) {
             update((st) => { const it = (st.food[currentDay] || []).find((x) => x.id === p.id); if (it) it.grams = v; });
             toast('Quantité modifiée');
@@ -213,7 +254,6 @@ function openProduct(p, { edit = false, grams } = {}) {
             addEntry(p, v);
             toast('Ajouté au journal');
           }
-          s.close();
         }
         if (e.target.closest('[data-del]')) {
           update((st) => { st.food[currentDay] = (st.food[currentDay] || []).filter((x) => x.id !== p.id); });
@@ -228,17 +268,14 @@ function openProduct(p, { edit = false, grams } = {}) {
 /* ---------- Saisie libre ---------- */
 function openManual(prefill = {}) {
   const v = prefill.per100 || {};
-  const editId = prefill.id && prefill.manual ? prefill.id : null;
   openSheet({
     title: 'Saisie libre',
     body: `
       <label class="label" for="m-name" style="margin-top:0">Nom</label>
       <input class="input" id="m-name" style="width:100%" value="${esc(prefill.name || '')}" placeholder="Ex. : assiette de pâtes bolognaise">
       <div class="grid-2">
-        <div><label class="label" for="m-kcal">Calories (kcal)</label><input class="input num" id="m-kcal" inputmode="decimal" style="width:100%;font-size:20px" value="${v.kcal ?? ''}"></div>
-        <div><label class="label" for="m-p">Protéines (g)</label><input class="input num" id="m-p" inputmode="decimal" style="width:100%;font-size:20px" value="${v.p ?? ''}"></div>
-        <div><label class="label" for="m-c">Glucides (g)</label><input class="input num" id="m-c" inputmode="decimal" style="width:100%;font-size:20px" value="${v.c ?? ''}"></div>
-        <div><label class="label" for="m-f">Lipides (g)</label><input class="input num" id="m-f" inputmode="decimal" style="width:100%;font-size:20px" value="${v.f ?? ''}"></div>
+        ${numField('m-kcal', 'Calories (kcal)', v.kcal)}${numField('m-p', 'Protéines (g)', v.p)}
+        ${numField('m-c', 'Glucides (g)', v.c)}${numField('m-f', 'Lipides (g)', v.f)}
       </div>
       <p class="hint">Valeurs pour la portion entière que tu as mangée.</p>
       <div class="sheet-actions"><button class="btn block" data-save>Ajouter au journal</button></div>`,
@@ -259,44 +296,293 @@ function openManual(prefill = {}) {
   });
 }
 
-/* ---------- Recherche ---------- */
-function openSearch() {
+const numField = (id, lab, val) => `<div><label class="label" for="${id}">${lab}</label><input class="input num" id="${id}" inputmode="decimal" style="width:100%;font-size:20px" value="${val ?? ''}"></div>`;
+
+/* ---------- Mes aliments (base perso) ---------- */
+function openMyFoods() {
   openSheet({
-    title: 'Rechercher',
+    title: 'Mes aliments',
+    body: `
+      <button class="btn block ghost" data-new>${icons.plus}Créer un aliment</button>
+      <div id="mf-list" style="margin-top:14px"></div>`,
+    onMount(s) {
+      const list = s.body.querySelector('#mf-list');
+      const draw = () => {
+        list.innerHTML = state.foods.length
+          ? `<div class="group">${state.foods.map((f) => `
+            <div class="row food-row">
+              ${thumb(f)}
+              <button class="r-main" data-use="${f.id}" style="text-align:left"><div class="r-title">${esc(f.name)}</div><div class="r-sub">${fmt(f.per100.kcal)} kcal, ${fmt(f.per100.p, 1)} g prot. pour 100 g${f.code ? ', code-barres enregistré' : ''}</div></button>
+              <button class="icon-btn" data-edit="${f.id}" aria-label="Modifier" style="width:36px;height:36px">${icons.pencil}</button>
+            </div>`).join('')}</div>`
+          : `<div class="empty"><b>Aucun aliment perso</b>Crée les aliments que tu ne trouves pas : ils apparaîtront dans la recherche et dans tes repas types.</div>`;
+      };
+      draw();
+      s.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-new]')) { s.close(); setTimeout(() => openFoodForm(), 200); }
+        const ed = e.target.closest('[data-edit]');
+        if (ed) { const f = state.foods.find((x) => x.id === ed.dataset.edit); s.close(); setTimeout(() => openFoodForm(f), 200); }
+        const u = e.target.closest('[data-use]');
+        if (u) { const f = state.foods.find((x) => x.id === u.dataset.use); s.close(); setTimeout(() => openProduct({ ...f, mine: true }), 200); }
+      });
+    },
+  });
+}
+
+function openFoodForm(food = null, { code = null, after } = {}) {
+  const v = food?.per100 || {};
+  openSheet({
+    title: food ? 'Modifier l\'aliment' : 'Nouvel aliment',
+    body: `
+      <label class="label" for="f-name" style="margin-top:0">Nom</label>
+      <input class="input" id="f-name" style="width:100%" value="${esc(food?.name || '')}" placeholder="Ex. : flocons d'avoine">
+      <label class="label" for="f-brand">Marque (facultatif)</label>
+      <input class="input" id="f-brand" style="width:100%" value="${esc(food?.brand || '')}">
+      <span class="label" style="margin-top:18px">Valeurs pour 100 g (sur l'étiquette)</span>
+      <div class="grid-2" style="margin-top:-8px">
+        ${numField('f-kcal', 'Calories (kcal)', v.kcal)}${numField('f-p', 'Protéines (g)', v.p)}
+        ${numField('f-c', 'Glucides (g)', v.c)}${numField('f-f', 'Lipides (g)', v.f)}
+      </div>
+      <div class="grid-2">${numField('f-serv', 'Portion habituelle (g)', food?.serving)}<div></div></div>
+      ${(code || food?.code) ? `<p class="hint">Code-barres ${esc(code || food.code)} : l'aliment sera reconnu au prochain scan.</p>` : ''}
+      <div class="sheet-actions">
+        <button class="btn block" data-save>${food ? 'Enregistrer' : 'Créer et ajouter au journal'}</button>
+        ${food ? '<button class="btn block danger" data-del>Supprimer cet aliment</button>' : ''}
+      </div>`,
+    onMount(s) {
+      const $ = (id) => s.body.querySelector(id);
+      if (!food) setTimeout(() => $('#f-name').focus(), 450);
+      s.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-del]')) {
+          update((st) => { st.foods = st.foods.filter((x) => x.id !== food.id); });
+          s.close(); toast('Aliment supprimé');
+          return;
+        }
+        if (!e.target.closest('[data-save]')) return;
+        const name = $('#f-name').value.trim();
+        const kcal = parseNum($('#f-kcal').value);
+        if (!name) { $('#f-name').focus(); return; }
+        if (kcal == null) { $('#f-kcal').focus(); return; }
+        const rec = {
+          id: food?.id || uid(),
+          name, brand: $('#f-brand').value.trim(), img: '', code: code || food?.code || null,
+          serving: parseNum($('#f-serv').value) || null,
+          per100: { kcal, p: parseNum($('#f-p').value) || 0, c: parseNum($('#f-c').value) || 0, f: parseNum($('#f-f').value) || 0 },
+        };
+        update((st) => {
+          const i = st.foods.findIndex((x) => x.id === rec.id);
+          if (i >= 0) st.foods[i] = rec; else st.foods.unshift(rec);
+        });
+        s.close();
+        if (food) { toast('Aliment enregistré'); return; }
+        toast('Aliment créé');
+        setTimeout(() => (after ? after({ ...rec, mine: true }) : openProduct({ ...rec, mine: true })), 250);
+      });
+    },
+  });
+}
+
+/* ---------- Repas types ---------- */
+function mealTotals(m) {
+  return m.items.reduce((t, it) => {
+    const r = it.grams / 100;
+    t.kcal += it.per100.kcal * r; t.p += it.per100.p * r; t.c += it.per100.c * r; t.f += it.per100.f * r;
+    return t;
+  }, { kcal: 0, p: 0, c: 0, f: 0 });
+}
+
+function openMeals() {
+  openSheet({
+    title: 'Repas types',
+    body: `
+      <button class="btn block ghost" data-new>${icons.plus}Créer un repas type</button>
+      <div style="margin-top:14px">${state.meals.length
+        ? `<div class="group">${state.meals.map((m) => {
+          const t = mealTotals(m);
+          return `<button class="row" data-meal="${m.id}">
+            <div class="r-main"><div class="r-title">${esc(m.name)}</div><div class="r-sub">${m.items.map((i) => esc(i.name)).join(', ')}</div></div>
+            <div class="r-end"><span class="num">${fmt(t.kcal)}</span><small>${fmt(t.p)} g prot.</small></div>
+          </button>`;
+        }).join('')}</div>`
+        : `<div class="empty"><b>Aucun repas type</b>Crée tes repas habituels une fois, puis ajoute-les au journal en un geste. Tu peux aussi enregistrer le journal d'une journée comme repas.</div>`}</div>`,
+    onMount(s) {
+      s.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-new]')) { s.close(); setTimeout(() => openMealEditor(), 200); }
+        const m = e.target.closest('[data-meal]');
+        if (m) { s.close(); setTimeout(() => openMeal(m.dataset.meal), 200); }
+      });
+    },
+  });
+}
+
+function openMeal(id) {
+  const m = state.meals.find((x) => x.id === id);
+  if (!m) return;
+  const t = mealTotals(m);
+  openSheet({
+    title: m.name,
+    body: `
+      <div class="calc">
+        <div><span class="num">${fmt(t.kcal)}</span><small>kcal</small></div>
+        <div class="p"><span class="num">${fmt(t.p)}</span><small>prot.</small></div>
+        <div class="c"><span class="num">${fmt(t.c)}</span><small>gluc.</small></div>
+        <div class="f"><span class="num">${fmt(t.f)}</span><small>lip.</small></div>
+      </div>
+      <div class="group">${m.items.map((i) => `
+        <div class="row food-row">${thumb(i)}
+          <div class="r-main"><div class="r-title">${esc(i.name)}</div><div class="r-sub">${i.manual ? '1 portion' : `${fmt(i.grams)} g`}</div></div>
+          <div class="r-end"><span class="num">${fmt(kcalOf(i, i.grams))}</span><small>kcal</small></div>
+        </div>`).join('')}</div>
+      <div class="sheet-actions">
+        <button class="btn block" data-add>Ajouter au journal</button>
+        <div class="btn-row"><button class="btn ghost" data-edit>Modifier</button><button class="btn danger" data-del>Supprimer</button></div>
+      </div>`,
+    onMount(s) {
+      s.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-add]')) {
+          m.items.forEach((it, k) => addEntry(it, it.grams, { silent: k < m.items.length - 1 }));
+          s.close();
+          toast(`${m.name} ajouté au journal`);
+        }
+        if (e.target.closest('[data-edit]')) { s.close(); setTimeout(() => openMealEditor(m), 200); }
+        if (e.target.closest('[data-del]')) {
+          update((st) => { st.meals = st.meals.filter((x) => x.id !== m.id); });
+          s.close(); toast('Repas supprimé');
+        }
+      });
+    },
+  });
+}
+
+function openMealEditor(meal = null, preset = null) {
+  let items = (meal ? meal.items : preset || []).map((i) => ({ ...i, per100: { ...i.per100 } }));
+  openSheet({
+    title: meal ? 'Modifier le repas' : 'Nouveau repas type',
+    body: `
+      <label class="label" for="ml-name" style="margin-top:0">Nom du repas</label>
+      <input class="input" id="ml-name" style="width:100%" value="${esc(meal?.name || '')}" placeholder="Ex. : petit-déj habituel">
+      <span class="label" style="margin-top:18px">Aliments</span>
+      <div id="ml-items"></div>
+      <button class="link" data-pick>+ Ajouter un aliment</button>
+      <div class="calc" id="ml-tot" style="margin-top:14px"></div>
+      <div class="sheet-actions"><button class="btn block" data-save>Enregistrer le repas</button></div>`,
+    onMount(s) {
+      const box = s.body.querySelector('#ml-items');
+      const tot = s.body.querySelector('#ml-tot');
+      const drawTot = () => {
+        const t = mealTotals({ items });
+        tot.innerHTML = `
+          <div><span class="num">${fmt(t.kcal)}</span><small>kcal</small></div>
+          <div class="p"><span class="num">${fmt(t.p)}</span><small>prot.</small></div>
+          <div class="c"><span class="num">${fmt(t.c)}</span><small>gluc.</small></div>
+          <div class="f"><span class="num">${fmt(t.f)}</span><small>lip.</small></div>`;
+      };
+      const draw = () => {
+        box.innerHTML = items.length ? `<div class="group">${items.map((i, k) => `
+          <div class="row" data-k="${k}">
+            <div class="r-main"><div class="r-title">${esc(i.name)}</div><div class="r-sub">${esc(i.brand || '')}</div></div>
+            ${i.manual ? '<span class="r-sub">1 portion</span>' : `<input class="input num ml-g" inputmode="decimal" value="${fmt(i.grams)}" aria-label="Grammes" style="width:72px;flex:none;text-align:center;font-size:17px;height:40px"><span class="r-sub">g</span>`}
+            <button class="icon-btn" data-rm aria-label="Retirer" style="width:36px;height:36px">${icons.trash}</button>
+          </div>`).join('')}</div>` : '<p class="hint">Aucun aliment pour l\'instant.</p>';
+        drawTot();
+      };
+      draw();
+      box.addEventListener('input', (e) => {
+        const r = e.target.closest('[data-k]');
+        if (!r || !e.target.classList.contains('ml-g')) return;
+        const v = parseNum(e.target.value);
+        if (v && v > 0) { items[Number(r.dataset.k)].grams = v; drawTot(); }
+      });
+      s.body.addEventListener('click', (e) => {
+        const r = e.target.closest('[data-k]');
+        if (e.target.closest('[data-rm]') && r) { items.splice(Number(r.dataset.k), 1); draw(); return; }
+        if (e.target.closest('[data-pick]')) {
+          pickFood((p, g) => { items.push({ ...toItem({ ...p, grams: g }) }); draw(); });
+          return;
+        }
+        if (e.target.closest('[data-save]')) {
+          const name = s.body.querySelector('#ml-name').value.trim();
+          if (!name) { s.body.querySelector('#ml-name').focus(); return; }
+          if (!items.length) { toast('Ajoute au moins un aliment', { error: true }); return; }
+          update((st) => {
+            const rec = { id: meal?.id || uid(), name, items };
+            const i = st.meals.findIndex((x) => x.id === rec.id);
+            if (i >= 0) st.meals[i] = rec; else st.meals.unshift(rec);
+          });
+          s.close();
+          toast('Repas enregistré');
+        }
+      });
+    },
+  });
+}
+
+/** Choisir un aliment (pour un repas type) : tes aliments, tes récents, ou Open Food Facts. */
+function pickFood(onPick) {
+  openSearch({ title: 'Choisir un aliment', onChoose: (p) => openProduct(p, { cta: 'Ajouter au repas', onConfirm: onPick }) });
+}
+
+/* ---------- Recherche ---------- */
+function resultRow(p, i, src) {
+  return `<button class="row food-row" data-r="${src}:${i}">
+    ${thumb(p)}
+    <div class="r-main"><div class="r-title">${esc(p.name)}</div><div class="r-sub">${esc(p.brand || (src === 'mine' ? 'Mon aliment' : 'Sans marque'))}</div></div>
+    <div class="r-end"><span class="num">${fmt(p.per100.kcal)}</span><small>kcal / 100 g</small></div>
+  </button>`;
+}
+
+function openSearch({ title = 'Rechercher', onChoose } = {}) {
+  openSheet({
+    title,
     body: `
       <form class="search-box" id="s-form">
         <input class="input" id="s-q" type="search" enterkeyhint="search" placeholder="Ex. : skyr, thon, pain de mie" autocomplete="off">
         <button class="btn" style="height:48px;padding:0 16px" aria-label="Rechercher">${icons.search}</button>
       </form>
-      <div id="s-res"><p class="hint">Base Open Food Facts, produits vendus en France.</p></div>`,
+      <div id="s-local"></div>
+      <div id="s-res"></div>
+      <button class="link" data-create style="margin-top:10px">+ Créer un aliment</button>`,
     onMount(s) {
       const q = s.body.querySelector('#s-q');
+      const local = s.body.querySelector('#s-local');
       const res = s.body.querySelector('#s-res');
-      let results = [];
+      let found = { mine: [], rec: [], off: [] };
+      const choose = (p) => { s.close(); setTimeout(() => (onChoose ? onChoose(p) : openProduct(p)), 200); };
+      const drawLocal = () => {
+        const { mine, rec } = searchLocal(q.value);
+        found.mine = mine; found.rec = rec.slice(0, 8);
+        local.innerHTML = (mine.length ? `<span class="label">Mes aliments</span><div class="group">${mine.map((p, i) => resultRow(p, i, 'mine')).join('')}</div>` : '')
+          + (found.rec.length ? `<span class="label">Récents</span><div class="group">${found.rec.map((p, i) => resultRow(p, i, 'rec')).join('')}</div>` : '');
+      };
+      drawLocal();
+      q.addEventListener('input', drawLocal);
       setTimeout(() => q.focus(), 450);
       s.body.querySelector('#s-form').onsubmit = async (e) => {
         e.preventDefault();
         const term = q.value.trim();
         if (term.length < 2) return;
         q.blur();
-        res.innerHTML = `<div class="empty">Recherche en cours…</div>`;
+        res.innerHTML = `<div class="empty">Recherche dans Open Food Facts…</div>`;
         try {
-          results = await searchProducts(term);
-          res.innerHTML = results.length
-            ? `<div class="group">${results.map((p, i) => `
-              <button class="row food-row row-enter" data-r="${i}" style="animation-delay:${Math.min(i, 8) * 30}ms">
-                <span class="dot">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : icons.food}</span>
-                <div class="r-main"><div class="r-title">${esc(p.name)}</div><div class="r-sub">${esc(p.brand || 'Sans marque')}</div></div>
-                <div class="r-end"><span class="num">${fmt(p.per100.kcal)}</span><small>kcal / 100 g</small></div>
-              </button>`).join('')}</div>`
-            : `<div class="empty"><b>Aucun résultat</b>Essaie un autre mot, ou scanne directement le code-barres.</div>`;
+          found.off = await searchProducts(term);
+          res.innerHTML = found.off.length
+            ? `<span class="label">Open Food Facts</span><div class="group">${found.off.map((p, i) => resultRow(p, i, 'off')).join('')}</div>`
+            : `<div class="empty"><b>Aucun résultat</b>Essaie un autre mot, scanne le code-barres ou crée l'aliment toi-même.</div>`;
         } catch {
           res.innerHTML = `<div class="empty"><b>Recherche impossible</b>Vérifie ta connexion internet, puis relance la recherche.</div>`;
         }
       };
-      res.addEventListener('click', (e) => {
+      s.body.addEventListener('click', (e) => {
         const r = e.target.closest('[data-r]');
-        if (r) { const p = results[Number(r.dataset.r)]; s.close(); setTimeout(() => openProduct(p), 200); }
+        if (r) {
+          const [src, i] = r.dataset.r.split(':');
+          const p = found[src][Number(i)];
+          return choose(src === 'rec' ? { ...p, grams: p.lastGrams } : p);
+        }
+        if (e.target.closest('[data-create]')) {
+          s.close();
+          setTimeout(() => openFoodForm(null, { after: onChoose ? (f) => onChoose(f) : undefined }), 200);
+        }
       });
     },
   });
@@ -343,7 +629,7 @@ function openScanner() {
       setTimeout(() => (p ? openProduct(p) : openNotFound(code)), 250);
     } catch {
       close();
-      setTimeout(() => toast('Pas de connexion internet', { error: true }), 250);
+      setTimeout(() => openNotFound(code, true), 250);
     }
   }
 
@@ -410,22 +696,24 @@ function openTypeCode() {
           s.close();
           setTimeout(() => (p ? openProduct(p) : openNotFound(code)), 200);
         } catch {
-          b.disabled = false; b.textContent = 'Chercher le produit';
-          toast('Pas de connexion internet', { error: true });
+          s.close();
+          setTimeout(() => openNotFound(code, true), 200);
         }
       };
     },
   });
 }
 
-function openNotFound(code) {
+function openNotFound(code, offline = false) {
   openSheet({
-    title: 'Introuvable',
-    body: `<p class="hint" style="font-size:15px;margin-top:0">Le code ${esc(code)} n'est pas dans Open Food Facts. Recopie les valeurs de l'étiquette en saisie libre.</p>
-      <div class="sheet-actions"><button class="btn block" data-m>Saisie libre</button><button class="btn block ghost" data-s>Rechercher par nom</button></div>`,
+    title: offline ? 'Pas de connexion' : 'Introuvable',
+    body: `<p class="hint" style="font-size:15px;margin-top:0">${offline
+      ? `Impossible de chercher le code ${esc(code)} sans internet. Tu peux créer l'aliment avec les valeurs de l'étiquette : il sera reconnu à chaque scan.`
+      : `Le code ${esc(code)} n'est pas dans Open Food Facts. Crée l'aliment avec les valeurs de l'étiquette : il sera reconnu à chaque scan.`}</p>
+      <div class="sheet-actions"><button class="btn block" data-c>Créer cet aliment</button><button class="btn block ghost" data-s>Rechercher par nom</button></div>`,
     onMount(s) {
-      s.body.querySelector('[data-m]').onclick = () => { s.close(); setTimeout(() => openManual(), 200); };
-      s.body.querySelector('[data-s]').onclick = () => { s.close(); setTimeout(openSearch, 200); };
+      s.body.querySelector('[data-c]').onclick = () => { s.close(); setTimeout(() => openFoodForm(null, { code }), 200); };
+      s.body.querySelector('[data-s]').onclick = () => { s.close(); setTimeout(() => openSearch(), 200); };
     },
   });
 }

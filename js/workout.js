@@ -13,7 +13,7 @@ function loadText(ex, kg) {
 }
 
 /** « 35 kg × 8, 7 » — résumé compact d'une liste de séries. */
-function setsSummary(ex, sets) {
+export function setsSummary(ex, sets) {
   const done = sets.filter((s) => s.reps);
   if (!done.length) return '';
   const groups = [];

@@ -4,8 +4,9 @@ import { renderToday } from './today.js';
 import { renderWorkout } from './workout.js';
 import { renderAbs } from './abs.js';
 import { renderFood, resetFoodDay } from './food.js';
+import { renderCalendar, resetCalendar } from './calendar.js';
 
-const views = { today: renderToday, workout: renderWorkout, abs: renderAbs, food: renderFood };
+const views = { today: renderToday, workout: renderWorkout, abs: renderAbs, food: renderFood, cal: renderCalendar };
 const root = document.getElementById('view');
 const tabs = [...document.querySelectorAll('.tab')];
 let current = sessionStorage.getItem('fonte.tab') || 'today';
@@ -49,6 +50,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && dayKey() !== renderedDay) {
     renderedDay = dayKey();
     resetFoodDay();
+    resetCalendar();
     show(current, { animate: false });
   }
 });
